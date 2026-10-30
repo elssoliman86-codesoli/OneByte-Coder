@@ -15,7 +15,7 @@ OneByte Coder is an Android-first AI coding workspace. It separates project plan
 ## Implemented
 
 - Mobile-first React/Capacitor workspace and Monaco editor.
-- Multi-project local persistence, file tree, file creation, ZIP/file/folder imports.
+- Multi-project local persistence, file tree, file creation, ZIP/file/folder imports for supported text/source formats (binary assets are skipped).
 - OpenAI-compatible provider settings, model discovery, metadata passthrough and per-model HTTP status/latency test.
 - Independent Planner, Coder and Reviewer model roles.
 - Structured project planning and persistent Skills.md instructions.
@@ -70,6 +70,7 @@ The default API URL is `http://localhost:8000`. On a physical Android phone, loc
 ## Important limitations
 
 - Live code streaming requires a provider/model that supports OpenAI-compatible SSE streaming and follows OneByte's file-block protocol. Generated files are applied incrementally; unsupported providers may fail with a clear stream error.
+- Import currently stores text/source files only; binary assets such as PNG, JPG, fonts and compiled files are skipped rather than embedded in the project VFS.
 - HTML preview supports linked CSS and classic JavaScript files that exist in the project map. It is not a full Vite/React/Next runtime or a Python/CLI/Android emulator.
 - The preview audit uses DOM geometry/accessibility heuristics. It does not capture screenshots, evaluate visual aesthetics or replace real device testing.
 - Python, CLI, Android and desktop execution still require isolated runtime workers. The generated GitHub workflows build selected project types after publishing.
