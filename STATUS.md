@@ -30,7 +30,6 @@
   Artifact ZIP SHA-256: `921dbf8dd82a8774648a32dcf463bb82b0d5649b179da84e86bef02779534724`.
 - **GitHub Pages:** frontend build and Pages artifact upload passed. Deployment was skipped because repository Pages publishing is not enabled.
   [Pages workflow run](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41048591633)
-- Latest repository main commit: `975b0f90ec37b15f9baacd90abdf0052e990eee3`.
 
 ## Verification boundaries and remaining work
 
