@@ -258,3 +258,63 @@ Build predictable commands.
 """
     selected = select_relevant_skills(skills, "Python", "Create a local script")
     assert "CLI and terminal engineering" in selected
+
+
+def test_publish_path_and_secret_guards():
+    from fastapi import HTTPException
+    from app.main import is_sensitive_project_path, normalize_project_path, validate_publish_files
+
+    assert normalize_project_path(r"src\\main.py") == "src/main.py"
+    assert normalize_project_path("../outside.txt") is None
+    assert normalize_project_path(r"C:\\private\\secret.txt") is None
+    assert is_sensitive_project_path(".env.production")
+    assert not is_sensitive_project_path(".env.example")
+    with pytest.raises(HTTPException) as error:
+        validate_publish_files({".env.production": "TOKEN=do-not-upload"})
+    assert error.value.status_code == 400
+
+
+def test_generated_workflow_uses_actual_branch_and_valid_yaml_lines():
+    from app.main import finalize_build_workflow
+
+    workflow = "on:\\n  push:\\n    branches: [main]\\n"
+    finalized = finalize_build_workflow(workflow, "trunk")
+    assert 'branches: ["trunk"]' in finalized
+    assert "branches: [main]" not in finalized
+
+
+def test_stream_rejects_truncated_file_instead_of_marking_it_complete(monkeypatch):
+    class FakeStreamResponse:
+        status_code = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def aiter_lines(self):
+            content = "<ONEBYTE_SUMMARY>Partial</ONEBYTE_SUMMARY><ONEBYTE_FILE path=\\"src/main.py\\">print('partial')"
+            packet = {"choices": [{"delta": {"content": content}}]}
+            yield "data: " + json.dumps(packet)
+            yield "data: [DONE]"
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def stream(self, *args, **kwargs):
+            return FakeStreamResponse()
+
+    monkeypatch.setattr("app.main.httpx.AsyncClient", FakeAsyncClient)
+    response = client.post("/api/agent/execute/stream", json={
+        "base_url": "https://provider.example/v1",
+        "api_key": "test-secret",
+        "model": "test-model",
+        "task": "Create a Python file",
+        "project": {"name": "Sample", "description": "CLI", "kind": "CLI", "files": {}}
+    })
+    events = [json.loads(line) for line in response.text.splitlines() if line.strip()]
+    assert any(event.get("type") == "error" and "file-end marker" in event.get("message", "") for event in events)
+    assert not any(event.get("type") == "done" for event in events)
+    assert not any(event.get("type") == "file_end" for event in events)
