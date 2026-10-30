@@ -3,7 +3,7 @@ import Editor from '@monaco-editor/react';
 import JSZip from 'jszip';
 import builtInSkills from '../../skills/skills.md?raw';
 import {getSecret,setSecret,removeSecret} from './secureStorage';
-import {Activity,ArrowLeft,Bot,Check,ChevronDown,ChevronRight,Code2,Command,Eye,File,FileCode,Folder,FolderPlus,Github,Home,Menu,MessageSquare,MoreHorizontal,Play,Plus,RefreshCw,Rocket,Send,Settings,ShieldCheck,Smartphone,Terminal,Upload,X} from 'lucide-react';
+import {Activity,ArrowLeft,Bot,Check,ChevronDown,ChevronRight,Code2,Command,Eye,File,FileCode,Folder,FolderPlus,Github,Home,Menu,MessageSquare,MoreHorizontal,Play,Plus,RefreshCw,Rocket,Send,Settings,ShieldCheck,Smartphone,Terminal,Upload,X,Globe,Palette,Braces,FileText,FolderOpen} from 'lucide-react';
 
 const DEFAULT_API=import.meta.env.VITE_API_BASE||'http://localhost:8000';
 const starterFiles={
@@ -13,6 +13,9 @@ const starterFiles={
 };
 const initialProvider={name:'OpenAI Compatible',baseUrl:'https://api.openai.com/v1',apiKey:'',models:[]};
 const languageFor=p=>({jsx:'javascript',tsx:'typescript',js:'javascript',ts:'typescript',py:'python',html:'html',css:'css',json:'json',md:'markdown',xml:'xml',sh:'shell',yml:'yaml',yaml:'yaml',java:'java',kt:'kotlin',cpp:'cpp',c:'c',rs:'rust',go:'go',sql:'sql'}[p.split('.').pop()?.toLowerCase()]||'plaintext');
+const fileIconFor=path=>{const ext=path.split('.').pop()?.toLowerCase();if(ext==='py'||ext==='sh')return Terminal;if(['js','jsx','ts','tsx','rs','go','c','cpp','java','kt'].includes(ext))return Code2;if(ext==='html')return Globe;if(ext==='css')return Palette;if(ext==='json')return Braces;if(['md','txt'].includes(ext))return FileText;return FileCode};
+function createFileTree(paths){const root={};for(const path of paths){let node=root;const parts=path.split('/');parts.forEach((part,i)=>{node[part]??={children:{},path:null};if(i===parts.length-1)node[part].path=path;else node=node[part].children})}return root}
+
 
 function buildPreviewHtml(files, nonce){
  let html=files['index.html']||files['public/index.html']||'';
@@ -71,6 +74,7 @@ export default function App(){
  const [modelFilter,setModelFilter]=useState('');
  const [showModelDetails,setShowModelDetails]=useState(false);
  const [modelTests,setModelTests]=useState({});
+ const [expandedFolders,setExpandedFolders]=useState({});
  const importRef=useRef(null);
  const folderRef=useRef(null);
  const editorRef=useRef(null);
@@ -89,6 +93,9 @@ export default function App(){
  useEffect(()=>{if(!secretsReady)return;(githubToken?setSecret('github_token',githubToken):removeSecret('github_token')).catch(e=>flash('Could not store GitHub token securely: '+e.message))},[githubToken,secretsReady]);
  const fileList=useMemo(()=>Object.keys(files).sort((a,b)=>a.localeCompare(b)),[files]);
  const activeContent=files[selected]||'';
+ const fileTree=useMemo(()=>createFileTree(fileList),[fileList]);
+ function renderFileTree(nodes,parent=''){return Object.entries(nodes).sort((a,b)=>{const af=!!a[1].path,bf=!!b[1].path;return af===bf?a[0].localeCompare(b[0]):af?1:-1}).map(([name,node])=>{const path=parent?parent+'/'+name:name;if(node.path){const Icon=fileIconFor(node.path);return <button key={node.path} title={node.path} className={'drawer-file '+(node.path===selected?'chosen':'')} style={{paddingLeft:12+path.split('/').length*9}} onClick={()=>{setSelected(node.path);go('editor')}}><Icon size={15}/><span>{name}</span></button>}const open=expandedFolders[path]!==false;return <div className='tree-folder' key={path}><button className='drawer-folder' style={{paddingLeft:10+path.split('/').length*8}} onClick={()=>setExpandedFolders(v=>({...v,[path]:!open}))}><ChevronRight className={open?'tree-chevron open':''} size={13}/>{open?<FolderOpen size={15}/>:<Folder size={15}/>}<span>{name}</span></button>{open&&renderFileTree(node.children,path)}</div>})}
+
  async function switchProject(p){setActiveProjectId(p.id);setProject(p.name);setProjectDescription(p.description||'');setProjectKind(p.kind||'Web app');setFiles(p.files||starterFiles);setSelected(Object.keys(p.files||starterFiles)[0]||'');setPlan(null);setReview(null);go('editor')}
  async function newProject(){const name=window.prompt('Project name');if(!name?.trim())return;const description=window.prompt('Describe the project and its required features');if(!description?.trim())return flash('A project description is required');const kind=window.prompt('Project type: Website, Android app, CLI, or Desktop app',projectKind)||projectKind;if(!provider.apiKey){setSettings(true);return flash('Connect a planner model first')}setActiveProjectId(crypto.randomUUID());setProject(name.trim());setProjectDescription(description.trim());setProjectKind(kind);setFiles(starterFiles);setSelected('src/App.jsx');setPlan(null);setReview(null);setScreen('assistant');setTab('plan');setLogs([{role:'assistant',text:'Analyzing your project brief and preparing the architecture…'}]);try{const r=await fetch(apiBase+'/api/agent/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base_url:provider.baseUrl,api_key:provider.apiKey,model:plannerModel||model,name:name.trim(),description,kind,files:{}})});const d=await r.json();if(!r.ok)throw Error(d.detail||'Planning failed');setPlan(d.plan);setLogs(l=>[...l,{role:'assistant',text:d.summary||'Project plan is ready.'}]);flash('Project analyzed and plan created')}catch(e){setLogs(l=>[...l,{role:'error',text:e.message}]);flash(e.message)}}
  function addFile(){const path=window.prompt('New file path (example: src/main.py)');if(!path?.trim())return;const clean=path.trim().replace(/^\/+/, '');if(clean.split('/').includes('..'))return flash('Invalid file path');setFiles(f=>({...f,[clean]:f[clean]||''}));setSelected(clean);setScreen('editor');setDrawer(false)}
@@ -134,7 +141,7 @@ export default function App(){
    <button className="drawer-link" onClick={()=>go('assistant')}><Bot/>AI assistant</button>
    <button className="drawer-link" onClick={()=>go('preview')}><Eye/>Preview</button>
    <div className="drawer-section">PROJECT FILES <button className="mini-action" onClick={addFile}><Plus size={15}/></button></div>
-   <div className="drawer-files">{fileList.map(path=><button key={path} className={'drawer-file '+(path===selected?'chosen':'')} onClick={()=>{setSelected(path);go('editor')}}><FileCode size={15}/><span>{path}</span></button>)}</div>
+   <div className="drawer-files">{renderFileTree(fileTree)}</div>
    <button className="drawer-link" onClick={openImport}><Upload/>Import files / ZIP</button>
    <button className="drawer-link" onClick={()=>folderRef.current?.click()}><FolderPlus/>Import folder</button>
    <div className="drawer-bottom"><button className="drawer-link" onClick={()=>{setSettings(true);setDrawer(false)}}><Settings/>Settings & connections</button><div className="connection-state"><span className={provider.apiKey?'online-dot':'offline-dot'}/>{provider.apiKey?'AI provider connected':'AI provider not connected'}</div></div>
