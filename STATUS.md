@@ -16,9 +16,15 @@
 
 ## Verification boundaries
 
-- Backend CI passed on commit `cf8852712631eb66a03fff9385c6ddae77510c2b`.
-- Frontend production build and Capacitor sync passed on later source commits. The current APK workflow is being verified separately; do not treat an earlier artifact as containing newer commits.
-- Successful build packaging does not prove physical-device runtime behavior.
+- Backend CI passed on commit `7d6dc280c70a7616a16f6602d8a47bf2c7f33e50`: **8 tests passed**.
+- Frontend production build passed.
+- Capacitor Android sync passed.
+- Android Gradle debug APK build and artifact upload passed on commit `7d6dc280c70a7616a16f6602d8a47bf2c7f33e50`.
+- Build run: [41037395150](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41037395150).
+- Artifact: `onebyte-coder-debug-apk` (3,486,297 bytes), ID `12969215275`.
+- SHA-256: `2fd72688063460d3736537b3e2a5587778e9ad2c3717f4021a079211501f2e3f`.
+- Physical-device installation and end-to-end runtime testing have not been performed.
+- GitHub Pages deployment for the OneByte Coder repository remains manual; enable Settings → Pages → Build and deployment → GitHub Actions before running the Pages workflow.
 
 ## Remaining work
 
