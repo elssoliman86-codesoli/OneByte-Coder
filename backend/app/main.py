@@ -667,9 +667,8 @@ Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced
                                 if not match:
                                     buffer = buffer[-256:]
                                     break
-                                current_path = match.group(1).replace("\\", "/").lstrip("/")
-                                if (not current_path or ".." in current_path.split("/") or
-                                    current_path.startswith(".git/") or len(current_path) > 240):
+                                current_path = normalize_project_path(match.group(1))
+                                if current_path is None or is_sensitive_project_path(current_path):
                                     yield _ndjson({"type": "error", "message": f"Unsafe generated file path: {current_path}"})
                                     return
                                 buffer = buffer[match.end():]
@@ -703,14 +702,8 @@ Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced
                             else:
                                 break
             if state == "file" and current_path:
-                if buffer:
-                    total_chars += len(buffer)
-                    if total_chars > 4_000_000:
-                        yield _ndjson({"type": "error", "message": "Generated project exceeds the 4 MB response limit"})
-                        return
-                    yield _ndjson({"type": "file_delta", "path": current_path, "text": buffer})
-                files_written.append(current_path)
-                yield _ndjson({"type": "file_end", "path": current_path})
+                yield _ndjson({"type": "error", "message": f"Model stream ended before the file-end marker for {current_path}. The partial file was not accepted as complete."})
+                return
             if not files_written:
                 yield _ndjson({"type": "error", "message": "The model did not return any complete file blocks. Retry or choose a model that follows the streaming file protocol."})
                 return
