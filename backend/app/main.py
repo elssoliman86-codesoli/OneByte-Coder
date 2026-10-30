@@ -56,6 +56,65 @@ class PublishRequest(BaseModel):
     make_private: bool = False
 
 
+
+IGNORED_IMPORT_DIRS = {".git", "node_modules", "dist", "build", ".next", "vendor", ".venv", "venv", "__pycache__"}
+SENSITIVE_FILE_NAMES = {".npmrc", ".pypirc", "credentials", "credentials.json", "secrets.json", "service-account.json"}
+SENSITIVE_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".keystore", ".jks"}
+
+
+def normalize_project_path(path: str) -> str | None:
+    if not isinstance(path, str) or not path or len(path) > 240:
+        return None
+    normalized = path.replace("\\", "/")
+    parts = normalized.split("/")
+    if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
+        return None
+    if any(part in {"..", ".git"} for part in parts):
+        return None
+    if not all(part not in {"", "."} for part in parts):
+        return None
+    return normalized
+
+
+def is_sensitive_project_path(path: str) -> bool:
+    name = path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    if name == ".env" or (name.startswith(".env.") and name not in {".env.example", ".env.sample", ".env.template"}):
+        return True
+    if name in SENSITIVE_FILE_NAMES or name.endswith(tuple(SENSITIVE_SUFFIXES)):
+        return True
+    if name in {"id_rsa", "id_ed25519", "known_hosts"}:
+        return True
+    return False
+
+
+def validate_publish_files(files: dict[str, str]) -> dict[str, str]:
+    if len(files) > 300:
+        raise HTTPException(413, "A project can publish at most 300 files per request")
+    safe: dict[str, str] = {}
+    total_bytes = 0
+    for path, content in files.items():
+        clean = normalize_project_path(path)
+        if clean is None:
+            raise HTTPException(400, f"Unsafe project file path: {path}")
+        if is_sensitive_project_path(clean):
+            raise HTTPException(400, f"Refusing to publish a sensitive file: {clean}")
+        if not isinstance(content, str):
+            raise HTTPException(400, f"Project file must be text: {clean}")
+        size = len(content.encode("utf-8"))
+        if size > 1_000_000:
+            raise HTTPException(413, f"Project file is too large: {clean}")
+        total_bytes += size
+        if total_bytes > 10_000_000:
+            raise HTTPException(413, "Project source exceeds the 10 MB publish limit")
+        safe[clean] = content
+    return safe
+
+
+def finalize_build_workflow(workflow: str, branch: str) -> str:
+    safe_branch = branch.replace('"', "")
+    workflow = workflow.replace("branches: [main]", f'branches: ["{safe_branch}"]')
+    return workflow
+
 def normalized_base(url: str) -> str:
     value = url.strip().rstrip("/")
     if not value.startswith(("http://", "https://")):
@@ -245,7 +304,10 @@ async def import_github_repository(body: GitHubImportRequest):
         ignored = (".git/", "node_modules/", "dist/", "build/", ".next/", "vendor/")
         for item in tree:
             path = item.get("path", "")
-            if item.get("type") != "blob" or not path or path.startswith(ignored) or ".." in path.split("/") or path.startswith("/") or item.get("size", 0) > 500_000:
+            clean_path = normalize_project_path(path)
+            if item.get("type") != "blob" or item.get("mode") == "120000" or clean_path is None or is_sensitive_project_path(clean_path):
+                continue
+            if any(part.lower() in IGNORED_IMPORT_DIRS for part in clean_path.split("/")) or item.get("size", 0) > 500_000:
                 continue
             if len(files) >= 150 or total_bytes >= 5_000_000:
                 break
@@ -325,7 +387,7 @@ The workflow cannot enable repository Pages settings on its own.
 ---
 Generated with [OneByte Coder](https://github.com/{login}/OneByte-Coder).
 """
-        uploads = dict(body.files)
+        uploads = validate_publish_files(body.files)
         uploads.setdefault("README.md", readme)
         kind = body.kind.strip().lower()
         build_workflow = None
@@ -475,15 +537,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create source package
-        run: zip -r cli-source.zip . -x '.git/*' '.github/*'
+        run: zip -r cli-source.zip . -x '.git/*' '.github/*' 'node_modules/*' '.venv/*' 'venv/*' '.env' '.env.*' '**/.env' '**/.env.*' '**/*.pem' '**/*.key' '**/*.p12' '**/*.pfx'
       - uses: actions/upload-artifact@v4
         with:
           name: cli-source-package
           path: cli-source.zip
 """
         if build_workflow:
-            # Follow the target repository's actual default branch, not an assumed "main".
-            build_workflow = build_workflow.replace("branches: [main]", f'branches: ["{branch}"]')
+            build_workflow = finalize_build_workflow(build_workflow, branch)
             uploads[".github/workflows/onebyte-build.yml"] = build_workflow
         results = []
         for path, content in uploads.items():
