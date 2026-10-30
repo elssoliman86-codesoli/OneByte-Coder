@@ -20,7 +20,8 @@ Android-first AI coding workspace with distinct planning, implementation and rev
 - OpenAI-compatible provider discovery and streaming completion.
 - Android native secure storage backed by AES-GCM and Android Keystore.
 - Local project and queue persistence.
-- GitHub source publisher and generated per-project Actions workflow.
+- GitHub integration: import repository files, publish a new repository or update an existing owner/name target, and generate target-specific build workflows.
+
 
 ## Streaming protocol
 
