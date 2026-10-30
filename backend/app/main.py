@@ -67,7 +67,7 @@ SENSITIVE_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".keystore", ".jks"}
 def normalize_project_path(path: str) -> str | None:
     if not isinstance(path, str) or not path or len(path) > 240:
         return None
-    normalized = path.replace("\\", "/")
+    normalized = re.sub(r"/+", "/", path.replace("\\", "/"))
     parts = normalized.split("/")
     if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
         return None
