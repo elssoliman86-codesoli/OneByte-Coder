@@ -16,7 +16,8 @@
     "react-dom": "^18.3.1",
     "@capacitor/core": "^6.2.0",
     "@capacitor/android": "^6.2.0",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "@onebyte/secure-storage": "file:./native-plugins/secure-storage"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
