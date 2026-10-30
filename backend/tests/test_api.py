@@ -129,3 +129,10 @@ Use predictable CLI behavior.
     assert "CLI and terminal" not in web
     assert "CLI and terminal" in cli
     assert "Premium UI" not in cli
+
+def test_github_import_requires_owner_repo_format():
+    response = client.post("/api/github/import", json={
+        "token": "test-token",
+        "repository": "not-a-repository-path"
+    })
+    assert response.status_code == 400
