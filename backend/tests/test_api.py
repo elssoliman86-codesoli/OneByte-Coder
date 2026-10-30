@@ -306,6 +306,12 @@ def test_stream_rejects_truncated_file_instead_of_marking_it_complete(monkeypatc
         def __init__(self, *args, **kwargs):
             pass
 
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
         def stream(self, *args, **kwargs):
             return FakeStreamResponse()
 
