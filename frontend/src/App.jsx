@@ -155,7 +155,7 @@ export default function App(){
     <button className="file-tab" onClick={()=>setShowFilePicker(v=>!v)}><FileCode size={15}/><span>{selected}</span><ChevronDown size={14}/><span className="tab-spacer"/><span className="language-label">{languageFor(selected)}</span></button>
     {showFilePicker&&<div className="file-picker">{fileList.map(path=><button key={path} onClick={()=>{setSelected(path);setShowFilePicker(false)}}><FileCode size={14}/>{path}</button>)}</div>}
     <div className="editor-canvas"><Editor height="100%" theme="vs-dark" language={languageFor(selected)} path={selected} value={activeContent} onChange={v=>setFiles(f=>({...f,[selected]:v??''}))} onMount={editor=>{editorRef.current=editor}} options={{minimap:{enabled:false},fontSize:14,automaticLayout:true,wordWrap:'on',scrollBeyondLastLine:false,padding:{top:16,bottom:20},lineNumbers:'on',glyphMargin:false,folding:true,renderLineHighlight:'line',overviewRulerLanes:0,contextmenu:true,quickSuggestions:true,tabSize:2,scrollbar:{horizontalScrollbarSize:6,verticalScrollbarSize:6},stickyScroll:{enabled:false},readOnly:false}}/></div>
-    <div className="editor-status"><span><span className="online-dot"/> Ready</span><span>{languageFor(selected).toUpperCase()}</span><span>{activeContent.split('\n').length} lines</span></div>
+    <div className="editor-status"><span className={busy?"stream-indicator":""}><span className={busy?"offline-dot":"online-dot"}/>{busy?"STREAMING CODE":"Ready"}</span><span>{languageFor(selected).toUpperCase()}</span><span>{activeContent.split('\n').length} lines</span></div>
    </section>}
 
    {screen==='assistant'&&<section className="page assistant-page">
