@@ -80,3 +80,17 @@ The Planner, Coder and Expert Reviewer use this persistent skill library. Select
 - Show "Not provided" when provider APIs omit metadata.
 - HTTP 200 means endpoint success, not model quality.
 - Use repeatable benchmarks for objective model comparisons.
+
+## 13. Desktop application engineering — desktop, Windows and EXE
+- Select a desktop framework that matches the language and UI requirements; avoid packaging a web page as a native desktop app without explaining the trade-offs.
+- Define application lifecycle, window sizing, menus, keyboard shortcuts, file access and update behavior.
+- Keep filesystem access scoped to user-selected workspaces and validate imported paths.
+- Package reproducibly for the target OS and architecture; distinguish portable builds from installers and signed releases.
+- Test startup, shutdown, missing dependencies, file permissions and clean-machine installation.
+
+## 14. Model provider integration — AI and API clients
+- Treat provider base URLs, authentication headers, model IDs and streaming formats as provider-specific configuration.
+- Support timeouts, cancellation, bounded response sizes and clear HTTP error reporting.
+- Do not assume every model supports JSON mode, tool calling or server-sent events.
+- Never log API keys or include them in generated project files, browser storage or diagnostics.
+- Report provider-supplied metadata separately from measured latency and actual capability tests.
