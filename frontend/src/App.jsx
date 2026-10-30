@@ -7,7 +7,14 @@ import {Activity,ArrowLeft,Bot,Check,ChevronDown,ChevronRight,Code2,Command,Eye,
 
 const DEFAULT_API=import.meta.env.VITE_API_BASE||'http://localhost:8000';
 const starterFiles={
- 'src/App.jsx':"function buildPreviewHtml(files, nonce){
+ 'src/App.jsx':"export default function App(){\n  return (\n    <main>\n      <h1>Hello, OneByte</h1>\n      <p>Your next project starts here.</p>\n    </main>\n  );\n}\n",
+ 'src/styles.css':'* { box-sizing: border-box; }\nbody { margin: 0; font-family: sans-serif; }\n',
+ 'index.html':'<!doctype html>\n<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>\n'
+};
+const initialProvider={name:'OpenAI Compatible',baseUrl:'https://api.openai.com/v1',apiKey:'',models:[]};
+const languageFor=p=>({jsx:'javascript',tsx:'typescript',js:'javascript',ts:'typescript',py:'python',html:'html',css:'css',json:'json',md:'markdown',xml:'xml',sh:'shell',yml:'yaml',yaml:'yaml',java:'java',kt:'kotlin',cpp:'cpp',c:'c',rs:'rust',go:'go',sql:'sql'}[p.split('.').pop()?.toLowerCase()]||'plaintext');
+
+function buildPreviewHtml(files, nonce){
  let html=files['index.html']||files['public/index.html']||'';
  if(!html)return '';
  const cleanPath=p=>p.replace(/[?#].*$/,'').replace(/^\.\//,'').replace(/^\//,'');
@@ -24,12 +31,6 @@ const starterFiles={
  return html;
 }
 
-export default function App(){\n  return (\n    <main>\n      <h1>Hello, OneByte</h1>\n      <p>Your next project starts here.</p>\n    </main>\n  );\n}\n",
- 'src/styles.css':'* { box-sizing: border-box; }\nbody { margin: 0; font-family: sans-serif; }\n',
- 'index.html':'<!doctype html>\n<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>\n'
-};
-const initialProvider={name:'OpenAI Compatible',baseUrl:'https://api.openai.com/v1',apiKey:'',models:[]};
-const languageFor=p=>({jsx:'javascript',tsx:'typescript',js:'javascript',ts:'typescript',py:'python',html:'html',css:'css',json:'json',md:'markdown',xml:'xml',sh:'shell',yml:'yaml',yaml:'yaml',java:'java',kt:'kotlin',cpp:'cpp',c:'c',rs:'rust',go:'go',sql:'sql'}[p.split('.').pop()?.toLowerCase()]||'plaintext');
 
 export default function App(){
  const [files,setFiles]=useState(()=>{try{return JSON.parse(localStorage.getItem('onebyte.files'))||starterFiles}catch{return starterFiles}});
