@@ -430,7 +430,7 @@ A concise explanation of the changes.
 COMPLETE FILE CONTENT HERE
 <ONEBYTE_FILE_END>
 Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced. File paths must be relative and must not contain .. segments. Do not emit partial snippets: each file block must contain the complete final file. Do not claim tests, runtime previews, visual inspection, security scans, or deployments were performed unless actual tool results are supplied. Keep secrets out of source files. Follow the supplied skills. The file end marker must be on its own line."""
-    selected_skills = select_relevant_skills(body.skills, body.project.description, body.task)
+    selected_skills = select_relevant_skills(body.skills, body.project.kind or body.project.description, body.task)
     if selected_skills:
         system += "\n\nRELEVANT USER SKILLS / PROJECT RULES:\n" + selected_skills
     user = (
