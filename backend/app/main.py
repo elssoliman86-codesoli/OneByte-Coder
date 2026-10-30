@@ -128,7 +128,7 @@ def select_relevant_skills(raw: str, project_kind: str, task: str) -> str:
     if not raw.strip():
         return ""
     sections = re.split(r"(?=^##\s+)", raw, flags=re.MULTILINE)
-    always_terms = ("requirement analysis", "architecture and stack", "code quality", "application security", "git and release", "model metadata integrity")
+    always_terms = ("requirement analysis", "architecture and stack", "code quality", "application security", "git and release", "model metadata integrity", "model provider integration")
     context = (project_kind + " " + task).lower()
     tokens = set(re.findall(r"[a-z0-9+#.]+", context))
     selected = []
@@ -146,7 +146,7 @@ def select_relevant_skills(raw: str, project_kind: str, task: str) -> str:
         if any(term in context for term in ("cli", "terminal", "command line", "shell", "python")):
             include = include or "cli and terminal" in heading
         if any(term in context for term in ("desktop", "windows", "exe")):
-            include = include or "desktop" in heading
+            include = include or "desktop application engineering" in heading
         if include:
             selected.append(section.strip())
     return "\n\n".join(selected)[:16000]
