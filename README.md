@@ -22,10 +22,12 @@ OneByte Coder is an Android-first AI coding workspace. It separates project plan
 - Streaming file generation into Monaco using newline-delimited JSON events.
 - Sequential task queue persisted in local storage; interrupted running tasks are returned to queued state after reload.
 - Android native secure storage plugin: AES-GCM encrypted values with an AES key protected by Android Keystore. Browser builds keep secrets in memory only.
+- Hierarchical file tree with language-specific icons.
 - Sandboxed HTML preview with linked CSS and classic JavaScript assets inlined from the project file map.
 - In-frame DOM layout heuristics for small touch targets, control overlap, missing accessible labels and horizontal overflow.
 - Static model-assisted code review and a 10/10 publish gate.
 - GitHub source publishing, generated README and per-target build/deploy workflows for websites, Android, Windows Python/.NET and CLI source archives.
+
 - Backend regression tests and GitHub Actions CI.
 
 ## Run locally
