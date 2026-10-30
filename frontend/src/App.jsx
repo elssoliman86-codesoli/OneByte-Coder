@@ -123,7 +123,7 @@ export default function App(){
      }
     }else{
      const path=normalizePath(file.webkitRelativePath||file.name);
-     if(!safePath(path)||!isTextPath(path))continue;
+     if(!safePath(path)||!isTextPath(path)){skipped++;continue;}
      if(file.size>500000||totalBytes+file.size>8*1024*1024)throw Error('Imported files exceed the 8 MB text limit');
      next[path]=await file.text();totalBytes+=file.size;imported++;
     }
