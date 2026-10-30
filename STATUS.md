@@ -10,7 +10,8 @@
 - Native Android secure-storage plugin encrypts API credentials with AES-GCM and Android Keystore; browser mode uses memory-only storage.
 - Per-model HTTP status and latency test endpoint.
 - HTML preview inlines project CSS and classic JS assets when present; sandboxed DOM audit reports touch target size, overlapping controls, missing labels and horizontal overflow.
-- GitHub publishing generates README and a project-specific Actions workflow for website, Android, Windows Python/.NET or CLI packaging.
+- GitHub repository import (bounded text-file import), source publishing and updating existing repositories, generated README and per-target build/deploy workflows.
+
 - Backend regression tests and backend CI workflow.
 
 ## Verification boundaries
