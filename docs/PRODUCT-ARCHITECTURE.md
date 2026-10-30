@@ -1,36 +1,50 @@
-# Product architecture and staged delivery
+# OneByte Coder — Product architecture
+
+## Product direction
+
+OneByte Coder is an Android-first mobile code editor with an AI coding assistant. The phone experience is the primary product; desktop browser support is secondary and responsive.
+
+## Mobile information architecture
+
+- **Projects:** current project, quick-start project types and import entry points.
+- **Editor:** Monaco editor, file switching, file creation, GitHub publishing and preview access.
+- **AI Assistant:** chat, implementation plan and independent static review.
+- **Preview:** runtime status and project preview surface.
+- **Navigation drawer:** file tree, import file/folder/ZIP, settings and provider connections.
+- **Settings sheet:** AI provider URL/key/model, backend URL and GitHub token.
 
 ## Core services
 
-- **Workspace UI:** project cards, file explorer, editor, preview surface, agent chat, task queue, plan, review, settings.
-- **Orchestrator:** classifies project type, selects relevant skills, builds an acceptance plan, routes tasks to the selected coding model, and records results.
-- **Provider registry:** provider name, Base URL, secret reference, model list, capability probes, verified pricing/context catalog.
-- **Project runtime manager:** creates isolated per-project workspaces, installs dependencies, starts allowed runtimes, exposes only approved preview ports.
-- **Visual QA service:** captures screenshots at fixed viewports, inspects DOM/accessibility/layout metrics, creates issue records, and reruns after fixes.
-- **Expert reviewer:** separate model selection for maintainability and security review, with test/scanner evidence attached to each finding.
-- **Release manager:** test gates, README generation, GitHub repository creation/push, Pages deploy, APK/EXE artifact pipeline, release details.
+- **Workspace UI:** mobile-first React application packaged for Android by Capacitor.
+- **Editor:** Monaco with language inference from file extensions.
+- **Orchestrator:** FastAPI endpoints for provider discovery, AI implementation and source review.
+- **Provider registry:** OpenAI-compatible provider URL, API key and model selection.
+- **Project storage:** local browser storage for the current project's files and metadata.
+- **Release manager:** GitHub publishing endpoint and GitHub Actions Android debug APK workflow.
 
-## Agent state machine
+## Mobile interaction requirements
 
-`draft → analyzed → planned → implementing → runtime_ready → visual_review → changes_proposed → awaiting_user_choice → implementing_fixes → tests → expert_review → publish_ready → published`
+- Use dynamic viewport sizing and safe-area insets.
+- Keep primary navigation reachable at the bottom.
+- Keep files and settings in a slide-out drawer / bottom sheet rather than desktop sidebars.
+- Avoid hiding the assistant or file explorer on narrow screens.
+- Make editor and chat composer flex within the available viewport when the soft keyboard opens.
+- Touch targets should be comfortable and controls should not rely on hover.
 
-The system must not advance to `runtime_ready` without a live process and a reachable preview URL. It must not mark `visual_review` complete without screenshots or browser inspection evidence. It must not mark `tests` complete without captured test command results. It must not publish automatically unless the user has enabled that policy and the configured release gates pass.
+## Agent state and evidence
 
-## Model roles
+`draft → analyzed → planned → implementing → changes_returned → review → publish_ready → published`
 
-1. **Orchestrator / planner:** understands brief, chooses stack, writes acceptance criteria and task graph.
-2. **Coding model:** writes implementation only; does not control review score or release status.
-3. **Visual reviewer:** inspects actual screenshots and layout/accessibility measurements.
-4. **Expert reviewer:** independent code quality and security review.
-5. **Verifier:** checks test/build output and confirms whether acceptance criteria have evidence.
-
-A single model may fill multiple roles for a small project, but role boundaries and evidence records remain separate.
+Do not claim runtime preview, visual QA, tests, security scans or deployment unless evidence from the corresponding tool exists.
 
 ## Trust and safety boundaries
 
 - Never execute untrusted project code on the API host.
-- Use per-project containers with CPU, memory, disk, network, process, and time limits.
-- Disable outbound network by default; allowlist package registries or explicitly approved destinations.
-- Treat uploaded archives as untrusted; reject path traversal, symlinks escaping the root, oversized archives, and decompression bombs.
-- Store provider and GitHub credentials in a secret manager / OS vault; redact logs and model context.
-- Require explicit approval for publishing, destructive filesystem operations, or access to secrets.
+- Use isolated per-project runtimes with resource and network limits before enabling previews or terminal execution.
+- Reject archive path traversal and oversized files.
+- Keep credentials out of source files and model context unless explicitly required; redact logs.
+- Require explicit user approval for publishing and destructive file operations.
+
+## Current limitations
+
+The current Preview surface is a placeholder. The app does not yet have a sandboxed runtime, on-device terminal, durable multi-project database, streaming code diffs or signed release pipeline. The backend must be deployed over HTTPS for physical-device use.
