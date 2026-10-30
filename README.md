@@ -1,16 +1,17 @@
-# OneByte Coder
+# OneByte Coder — Mobile-first AI code editor
 
-An AI-assisted coding workspace prototype built with React, Vite, Monaco Editor, FastAPI, and Capacitor.
+OneByte Coder is an Android-focused coding workspace built with React, Vite, Monaco Editor, FastAPI and Capacitor.
 
-## Included
+## Mobile app experience
 
-- Dark responsive workspace with file explorer and Monaco code editor.
+- Mobile-first navigation: Projects, Editor, AI Assistant and Preview.
+- Slide-out workspace drawer for project files, imports and settings.
+- Monaco code editor with language detection, syntax highlighting, file switching and touch-friendly layout.
+- Import individual source files, folders and ZIP archives.
 - OpenAI-compatible provider configuration and model discovery.
-- Agent task execution and structured implementation-plan display.
-- Static source review through a separately selectable review model.
-- ZIP and individual-file import.
-- FastAPI backend endpoints for provider discovery, agent execution, source review, and GitHub publishing.
-- GitHub Actions workflows for frontend GitHub Pages deployment and Android debug APK generation.
+- AI agent execution, implementation-plan display and model-assisted code review.
+- GitHub publishing through the configured backend API.
+- Project files and project name are kept in local browser storage; provider credentials are session-scoped.
 
 ## Run locally
 
@@ -25,8 +26,6 @@ pip install -r requirements.txt
 python run.py
 ```
 
-API health: http://localhost:8000/health
-
 ### Frontend
 
 ```bash
@@ -35,20 +34,21 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173.
+## Android
 
-Set `VITE_API_BASE` when the backend is hosted somewhere other than `http://localhost:8000`.
+The Android wrapper uses Capacitor. The GitHub Actions workflow builds a debug APK:
 
-## Android APK
+1. Push the repository to GitHub.
+2. Open Actions → Build Android APK.
+3. Run the workflow manually.
+4. Download the `onebyte-coder-debug-apk` artifact.
 
-The workflow `.github/workflows/android-apk.yml` creates a **debug APK** and uploads it as a GitHub Actions artifact. It is not a signed Play Store release. The workflow is configured for manual dispatch or a `v*` tag push.
+The generated APK is a debug build, not a Play Store-signed release.
+
+## Important deployment note
+
+The default API URL is `http://localhost:8000`, which is suitable for local browser development only. On a physical phone, localhost refers to the phone itself. Deploy the FastAPI backend over HTTPS and set `VITE_API_BASE` to that backend URL before building the APK.
 
 ## Current limitations
 
-This is a prototype, not a complete autonomous IDE. The preview is a placeholder and does not launch a project runtime. The workspace does not yet provide isolated terminal execution, real browser-based visual QA, streaming code diffs, durable multi-project storage, or a release-signed APK. Source review is model-assisted static analysis and is not a security certification. The full Vite build and Android Gradle build have not yet been verified in this environment.
-
-Do not deploy the backend as a public multi-user service without authentication, per-user isolation, rate limits, secure secret storage, and stricter network controls.
-
-## License
-
-MIT
+The preview screen is an honest placeholder until a secure project runtime is implemented. The app does not execute arbitrary project code on the phone. AI review is static model-assisted analysis, not a security certification. Production deployment requires authentication, per-user isolation, secure secret storage, rate limits and strict runtime/network isolation.
