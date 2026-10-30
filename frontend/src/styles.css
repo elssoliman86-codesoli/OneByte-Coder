@@ -17,3 +17,5 @@
 @media(max-width:600px){.model-meta-row{grid-template-columns:1fr 1fr}.model-meta-row b{grid-column:1/-1}.queue-card-head{align-items:flex-start;flex-direction:column}.queue-row{align-items:flex-start}.html-preview{min-height:240px}}
 
 .project-list{display:grid;grid-template-columns:1fr;gap:9px}.project-list .project-card{width:100%;cursor:pointer}.project-list .project-card-info{min-width:0}.project-list .project-card-info p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-list .project-card:hover{border-color:#647ecb;transform:translateY(-1px)}
+
+.plan-detail{padding:11px;margin:10px 0;border:1px solid #293a53;border-radius:9px;background:#101a27}.plan-detail>b{display:block;font-size:10px;color:#c8d5ec;margin-bottom:7px}.plan-detail>p{font-size:10px;line-height:1.6;color:#9aa9bd}.plan-chip{display:inline-flex;margin:3px 5px 3px 0;padding:5px 8px;border-radius:6px;background:#1c2b44;color:#b9c9f1;font-size:9px}.plan-bullet{font-size:10px;line-height:1.6;color:#9eacc0;padding:3px 0}.plan-tree-line{display:block;padding:4px 7px;margin:2px 0;border-radius:4px;background:#0b1420;color:#a9bcdf;font:9px var(--mono)}
