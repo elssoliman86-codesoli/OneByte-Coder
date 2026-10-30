@@ -331,3 +331,22 @@ def test_stream_rejects_truncated_file_instead_of_marking_it_complete(monkeypatc
     assert any(event.get("type") == "error" and "file-end marker" in event.get("message", "") for event in events), response.text
     assert not any(event.get("type") == "done" for event in events)
     assert not any(event.get("type") == "file_end" for event in events)
+
+
+def test_review_handles_non_numeric_score_and_invalid_findings(monkeypatch):
+    async def fake_provider_post(base, key, payload):
+        return {"choices": [{"message": {"content": json.dumps({
+            "score": "excellent",
+            "summary": "Reviewed",
+            "findings": "not-a-list"
+        })}}]}
+    monkeypatch.setattr("app.main.provider_post", fake_provider_post)
+    response = client.post("/api/agent/review", json={
+        "base_url": "https://provider.example/v1",
+        "api_key": "test-secret",
+        "model": "test-model",
+        "project": {"name": "Sample", "description": "", "files": {}}
+    })
+    assert response.status_code == 200
+    assert response.json()["score"] == 0
+    assert response.json()["findings"] == []
