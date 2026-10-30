@@ -1,27 +1,28 @@
-# Build verification report
+# Implementation status
 
-## Mobile-first update
+## Delivered in the current source update
 
-The mobile-first Android workspace has been implemented on the `mobile-first-app` branch.
-
-Implemented:
-- Mobile navigation for Projects, Editor, AI Assistant and Preview.
-- Slide-out drawer for project files, imports and settings.
-- Mobile-oriented Monaco editor layout and language detection.
-- ZIP, individual-file and folder import.
-- AI provider/model configuration, agent execution, plan and static review screens.
-- GitHub publishing wired to the existing backend endpoint.
-- Safe-area viewport metadata and mobile layout sizing.
-- Frontend build workflow for pull requests.
+- Added a structured Planner API endpoint and connected project creation to brief analysis.
+- Added separate Planner and Coding model selectors, retaining the independent Reviewer model.
+- Added a sequential implementation queue with visible queued, running, completed and failed states.
+- Added a Skills.md editor in Settings and persistent custom instructions passed to coding requests.
+- Added model metadata passthrough for context-window and pricing fields only when provided by the model provider.
+- Added filterable model details and explicit "not tested" status for coding benchmarks.
+- Added a sandboxed HTML preview for projects containing an index.html entry file.
+- Refined the workspace UI and added queue/model metadata styles.
+- Updated product documentation.
 
 ## Verification status
 
-The source changes have been committed to the feature branch. A full Vite production build and Android Gradle/APK build still require GitHub Actions execution. Physical-device behavior, keyboard resizing, API connectivity and runtime preview have not been verified.
+The GitHub Actions frontend and Android build workflows are configured to verify the current source. A successful production build or APK packaging run verifies compilation and packaging only; it does not prove runtime functionality on a physical phone.
 
-## Known product limitations
+## Known limitations
 
-- The Preview screen is a placeholder until a secure isolated project runtime is implemented.
-- The backend default URL `http://localhost:8000` is for local development. A physical Android device needs a deployed HTTPS backend URL configured with `VITE_API_BASE`.
-- AI review is model-assisted static analysis, not a security certification.
-- Provider API keys and GitHub token are kept only in the current app session; project files are stored in local browser storage.
-- A debug APK is not a signed Play Store release.
+- API keys are session-scoped, not stored using Android Keystore-backed secure storage.
+- Monaco does not yet receive token-by-token code streaming; files are applied after a complete structured model response.
+- Queue state is not durable across application restarts.
+- Python/CLI/Android/desktop runtime execution requires isolated runtime/build workers.
+- The model provider may not expose prices, context windows or coding benchmark results.
+- AI review is model-assisted static review, not a security certification.
+- Publishing uploads source to GitHub; APK/EXE release packaging and website hosting are separate workflows.
+- A debug APK is not a signed production release.
