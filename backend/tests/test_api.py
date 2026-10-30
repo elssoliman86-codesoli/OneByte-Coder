@@ -277,7 +277,10 @@ def test_publish_path_and_secret_guards():
 def test_generated_workflow_uses_actual_branch_and_valid_yaml_lines():
     from app.main import finalize_build_workflow
 
-    workflow = "on:\\n  push:\\n    branches: [main]\\n"
+    workflow = """on:
+  push:
+    branches: [main]
+"""
     finalized = finalize_build_workflow(workflow, "trunk")
     assert 'branches: ["trunk"]' in finalized
     assert "branches: [main]" not in finalized
@@ -294,7 +297,7 @@ def test_stream_rejects_truncated_file_instead_of_marking_it_complete(monkeypatc
             return False
 
         async def aiter_lines(self):
-            content = "<ONEBYTE_SUMMARY>Partial</ONEBYTE_SUMMARY><ONEBYTE_FILE path=\\"src/main.py\\">print('partial')"
+            content = '<ONEBYTE_SUMMARY>Partial</ONEBYTE_SUMMARY><ONEBYTE_FILE path="src/main.py">print("partial")'
             packet = {"choices": [{"delta": {"content": content}}]}
             yield "data: " + json.dumps(packet)
             yield "data: [DONE]"
