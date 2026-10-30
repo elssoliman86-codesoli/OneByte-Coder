@@ -91,6 +91,29 @@ async def list_models(body: ProviderRequest):
     models = [{"id": row.get("id", ""), "owned_by": row.get("owned_by"), "created": row.get("created"), "context_window": row.get("context_window"), "input_price": row.get("input_price"), "output_price": row.get("output_price")} for row in rows if row.get("id")]
     return {"models": models, "metadata_note": "The OpenAI-compatible models endpoint generally does not provide verified pricing, context-window limits, or coding benchmark scores."}
 
+
+class ModelTestRequest(BaseModel):
+    base_url: str
+    api_key: str
+    model: str
+
+@app.post("/api/providers/test-model")
+async def test_model(body: ModelTestRequest):
+    import time
+    url = normalized_base(body.base_url) + "/chat/completions"
+    started = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(35.0, connect=10.0)) as client:
+            response = await client.post(
+                url,
+                headers={"Authorization": f"Bearer {body.api_key}", "Content-Type": "application/json"},
+                json={"model": body.model, "messages": [{"role": "user", "content": "Reply with OK."}], "max_tokens": 2, "temperature": 0},
+            )
+        elapsed = round((time.perf_counter() - started) * 1000)
+        return {"model": body.model, "http_status": response.status_code, "ok": response.status_code == 200, "latency_ms": elapsed, "detail": None if response.status_code == 200 else response.text[:500]}
+    except httpx.RequestError as exc:
+        return {"model": body.model, "http_status": None, "ok": False, "latency_ms": round((time.perf_counter() - started) * 1000), "detail": str(exc)[:500]}
+
 @app.post("/api/agent/plan")
 async def plan_project(body: PlanRequest):
     if not body.description.strip():
