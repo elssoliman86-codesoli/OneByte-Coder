@@ -56,7 +56,7 @@ export default function App(){
  useEffect(()=>{localStorage.setItem('onebyte.files',JSON.stringify(files))},[files]);
  useEffect(()=>{localStorage.setItem('onebyte.project',project)},[project]);
  useEffect(()=>{localStorage.setItem('onebyte.description',projectDescription)},[projectDescription]);
- useEffect(()=>{setProjects(ps=>{const record={id:activeProjectId,name:project,description:projectDescription,kind:projectKind,files};const next=ps.some(p=>p.id===activeProjectId)?ps.map(p=>p.id===activeProjectId?record:p):[record,...ps];localStorage.setItem('onebyte.projects',JSON.stringify(next));return next})},[files,project,projectKind,activeProjectId]);
+ useEffect(()=>{setProjects(ps=>{const record={id:activeProjectId,name:project,description:projectDescription,kind:projectKind,files};const next=ps.some(p=>p.id===activeProjectId)?ps.map(p=>p.id===activeProjectId?record:p):[record,...ps];localStorage.setItem('onebyte.projects',JSON.stringify(next));return next})},[files,project,projectDescription,projectKind,activeProjectId]);
  useEffect(()=>{localStorage.setItem('onebyte.activeProject',activeProjectId)},[activeProjectId]);
  useEffect(()=>{localStorage.setItem('onebyte.skills',skills)},[skills]);
  useEffect(()=>{localStorage.setItem('onebyte.queue',JSON.stringify(queue))},[queue]);
@@ -86,7 +86,7 @@ export default function App(){
    else if(event.type==='error'){throw Error(event.message||'AI streaming failed')}
    else if(event.type==='done'){completed=true;setLogs(l=>[...l,{role:'assistant',text:event.summary||summary||'Code generation completed.'}]);setTab('agent');flash('Live code generation completed')}
   };
-  try{while(true){const {value,done}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});const lines=pending.split('\\n');pending=lines.pop()||'';for(const line of lines)handle(line)}pending+=decoder.decode();if(pending.trim())handle(pending)}
+  try{while(true){const {value,done}=await reader.read();if(done)break;pending+=decoder.decode(value,{stream:true});const lines=pending.split('\n');pending=lines.pop()||'';for(const line of lines)handle(line)}pending+=decoder.decode();if(pending.trim())handle(pending)}
   finally{reader.releaseLock()}
   if(!completed)throw Error('The model stream ended before the completion event. Check the generated files and retry if needed.');
  }
