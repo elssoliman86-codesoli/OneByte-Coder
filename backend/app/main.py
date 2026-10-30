@@ -339,7 +339,7 @@ jobs:
 from fastapi.responses import StreamingResponse
 
 def _ndjson(event: dict[str, Any]) -> str:
-    return json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
+    return json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n"
 
 @app.post("/api/agent/execute/stream")
 async def execute_agent_stream(body: AgentRequest):
@@ -347,8 +347,8 @@ async def execute_agent_stream(body: AgentRequest):
         raise HTTPException(400, "Task is required")
     if len(body.project.files) > 80:
         raise HTTPException(413, "Project has too many files for one model request")
-    file_context = "\\n\\n".join(
-        f"--- FILE: {path} ---\\n{content[:14000]}"
+    file_context = "\n\n".join(
+        f"--- FILE: {path} ---\n{content[:14000]}"
         for path, content in list(body.project.files.items())[:35]
     )
     system = """You are OneByte Coder's implementation agent. Stream your answer in this exact plain-text protocol; do not use Markdown fences:
@@ -360,10 +360,10 @@ COMPLETE FILE CONTENT HERE
 <ONEBYTE_FILE_END>
 Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced. File paths must be relative and must not contain .. segments. Do not emit partial snippets: each file block must contain the complete final file. Do not claim tests, runtime previews, visual inspection, security scans, or deployments were performed unless actual tool results are supplied. Keep secrets out of source files. Follow the supplied skills. The file end marker must be on its own line."""
     if body.skills.strip():
-        system += "\\n\\nUSER SKILLS / PROJECT RULES:\\n" + body.skills[:12000]
+        system += "\n\nUSER SKILLS / PROJECT RULES:\n" + body.skills[:12000]
     user = (
-        f"Project: {body.project.name}\\nBrief: {body.project.description}"
-        f"\\nTask: {body.task}\\n\\nCurrent project files:\\n{file_context or '(no files yet)'}"
+        f"Project: {body.project.name}\nBrief: {body.project.description}"
+        f"\nTask: {body.task}\n\nCurrent project files:\n{file_context or '(no files yet)'}"
     )
     payload = {
         "model": body.model,
@@ -381,7 +381,7 @@ Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced
         files_written: list[str] = []
         marker_summary = "<ONEBYTE_SUMMARY>"
         marker_summary_end = "</ONEBYTE_SUMMARY>"
-        marker_file_end = "\\n<ONEBYTE_FILE_END>"
+        marker_file_end = "\n<ONEBYTE_FILE_END>"
         try:
             url = normalized_base(body.base_url) + "/chat/completions"
             async with httpx.AsyncClient(timeout=httpx.Timeout(240.0, connect=25.0)) as client:
@@ -431,11 +431,11 @@ Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced
                                     yield _ndjson({"type": "summary_delta", "text": piece})
                                 state = "seek_file"
                             elif state == "seek_file":
-                                match = re.search(r'<ONEBYTE_FILE\\s+path="([^"]+)">', buffer)
+                                match = re.search(r'<ONEBYTE_FILE\s+path="([^"]+)">', buffer)
                                 if not match:
                                     buffer = buffer[-256:]
                                     break
-                                current_path = match.group(1).replace("\\\\", "/").lstrip("/")
+                                current_path = match.group(1).replace("\\", "/").lstrip("/")
                                 if (not current_path or ".." in current_path.split("/") or
                                     current_path.startswith(".git/") or len(current_path) > 240):
                                     yield _ndjson({"type": "error", "message": f"Unsafe generated file path: {current_path}"})
@@ -456,7 +456,7 @@ Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced
                                         yield _ndjson({"type": "file_delta", "path": current_path, "text": piece})
                                     break
                                 piece, buffer = buffer[:pos], buffer[pos + len(marker_file_end):]
-                                if piece.endswith("\\r"):
+                                if piece.endswith("\r"):
                                     piece = piece[:-1]
                                 total_chars += len(piece)
                                 if total_chars > 4_000_000:
