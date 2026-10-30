@@ -230,3 +230,31 @@ def test_model_test_reports_provider_http_status(monkeypatch):
     assert response.json()["ok"] is False
     assert response.json()["http_status"] == 401
     assert response.json()["detail"] == "Invalid API key"
+
+
+def test_skill_selector_includes_desktop_and_provider_skills():
+    from app.main import select_relevant_skills
+
+    skills = """# Skills
+## 1. Requirement analysis — always
+Analyze the brief.
+## 2. Model provider integration — AI and API clients
+Handle provider APIs.
+## 3. Desktop application engineering — desktop, Windows and EXE
+Package native apps.
+"""
+    selected = select_relevant_skills(skills, "Desktop app", "Build a Windows executable")
+    assert "Requirement analysis" in selected
+    assert "Model provider integration" in selected
+    assert "Desktop application engineering" in selected
+
+
+def test_skill_selector_treats_python_project_as_cli():
+    from app.main import select_relevant_skills
+
+    skills = """# Skills
+## 1. CLI and terminal engineering
+Build predictable commands.
+"""
+    selected = select_relevant_skills(skills, "Python", "Create a local script")
+    assert "CLI and terminal engineering" in selected
