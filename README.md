@@ -1,29 +1,32 @@
 # OneByte Coder
 
-OneByte Coder is an AI-assisted coding workspace built around three independent model roles: **Planner**, **Coder**, and **Expert Reviewer**.
+OneByte Coder is an Android-first AI coding workspace. It separates project planning, code generation and expert review into distinct model roles.
 
 ## Workflow
 
-1. Create a project and describe the intended product.
-2. The Planner analyzes the brief and returns a structured project plan before implementation.
-3. Select a dedicated coding model. Coding requests are added to a sequential queue.
-4. Edit generated files in Monaco, import ZIP/source files, and inspect HTML entry-point previews.
-5. Select a separate reviewer model for model-assisted code-quality and security review.
-6. Publish the reviewed source project to GitHub.
+1. Create a project, choose its target (website, Android, CLI or desktop) and describe the product.
+2. The Planner returns requirements, architecture, recommended stack, file tree, acceptance criteria and risks.
+3. Select a dedicated Coder model. Tasks enter a sequential queue.
+4. The Coder streams complete file blocks from an OpenAI-compatible streaming endpoint. Monaco receives file chunks while generation is in progress.
+5. Inspect HTML previews, run the in-frame layout/accessibility heuristics, edit files and import ZIP/source files.
+6. Select an independent Reviewer model and run static model-assisted review.
+7. Publish source to GitHub. OneByte generates a target-specific GitHub Actions workflow and a README.
 
 ## Implemented
 
-- Responsive project/editor/assistant screens and mobile navigation.
-- Monaco editor, file switching, file creation, ZIP/file/folder imports.
-- OpenAI-compatible provider settings and model discovery.
-- Dedicated planner, coding and reviewer model selectors.
-- Structured planning endpoint for requirements, architecture, stack, file tree and acceptance criteria.
-- Sequential coding task queue with queued/running/done/failed states.
-- Persistent custom Skills.md instructions, plus the built-in skills library at `skills/skills.md`.
-- Provider metadata display for context/pricing only when the provider actually returns those fields.
-- Sandboxed HTML preview when an `index.html` entry file exists.
-- Model-assisted static review and GitHub repository publishing.
-- Capacitor Android wrapper and GitHub Actions debug APK workflow.
+- Mobile-first React/Capacitor workspace and Monaco editor.
+- Multi-project local persistence, file tree, file creation, ZIP/file/folder imports.
+- OpenAI-compatible provider settings, model discovery, metadata passthrough and per-model HTTP status/latency test.
+- Independent Planner, Coder and Reviewer model roles.
+- Structured project planning and persistent Skills.md instructions.
+- Streaming file generation into Monaco using newline-delimited JSON events.
+- Sequential task queue persisted in local storage; interrupted running tasks are returned to queued state after reload.
+- Android native secure storage plugin: AES-GCM encrypted values with an AES key protected by Android Keystore. Browser builds keep secrets in memory only.
+- Sandboxed HTML preview with linked CSS and classic JavaScript assets inlined from the project file map.
+- In-frame DOM layout heuristics for small touch targets, control overlap, missing accessible labels and horizontal overflow.
+- Static model-assisted code review and a 10/10 publish gate.
+- GitHub source publishing, generated README and per-target build/deploy workflows for websites, Android, Windows Python/.NET and CLI source archives.
+- Backend regression tests and GitHub Actions CI.
 
 ## Run locally
 
@@ -46,20 +49,31 @@ npm install
 npm run dev
 ```
 
+### Backend tests
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest -q
+```
+
 ## Android APK
 
-Open Actions → Build Android APK → Run workflow manually. Download the `onebyte-coder-debug-apk` artifact. This is a debug APK for testing, not a Play Store-signed release.
+Open Actions → Build Android APK and download the `onebyte-coder-debug-apk` artifact. This is a debug APK for testing, not a Play Store-signed release.
 
-## Backend deployment
+## Deploying the backend
 
-The default API URL is `http://localhost:8000`, suitable for local browser development. On a physical Android device, localhost refers to the phone. Deploy the backend over HTTPS and configure `VITE_API_BASE` before building the APK.
+The default API URL is `http://localhost:8000`. On a physical Android phone, localhost refers to the phone, not your computer. Deploy the FastAPI backend over HTTPS and set the API server URL in Settings.
 
 ## Important limitations
 
-- Provider keys are session-scoped in the current app; Android Keystore-backed secure storage is not implemented yet.
-- Coding output is applied after the model response completes; token-by-token Monaco streaming is not implemented yet.
-- The queue is sequential in the current app session and is not durable across restarts.
-- HTML preview is sandboxed. Python, CLI, Android and desktop execution need isolated runtime/build workers.
-- Provider APIs often omit context-window and pricing metadata. Unknown values are shown as unavailable, not guessed.
-- Model review is static and is not SAST/DAST, penetration testing or a security certification.
-- GitHub publishing uploads source files and a README. APK/EXE packaging and GitHub Pages deployment need separate workflows.
+- Live code streaming requires a provider/model that supports OpenAI-compatible SSE streaming and follows OneByte's file-block protocol. Generated files are applied incrementally; unsupported providers may fail with a clear stream error.
+- HTML preview supports linked CSS and classic JavaScript files that exist in the project map. It is not a full Vite/React/Next runtime or a Python/CLI/Android emulator.
+- The preview audit uses DOM geometry/accessibility heuristics. It does not capture screenshots, evaluate visual aesthetics or replace real device testing.
+- Python, CLI, Android and desktop execution still require isolated runtime workers. The generated GitHub workflows build selected project types after publishing.
+- Website publishing requires enabling repository Settings → Pages → Build and deployment → GitHub Actions. GitHub settings cannot be enabled by the source-upload endpoint.
+- Android debug APK workflow requires a Capacitor Android project at the project root. Windows EXE workflow supports Python entry points and .NET projects; other stacks need a dedicated packager.
+- Static model review is not SAST/DAST, penetration testing or a security certification. A 10/10 model score is not proof that software is vulnerability-free.
+- Android Keystore storage is native-only. Browser preview keeps secrets in memory and does not persist them.
+- Queue state is stored in local storage, not a server-side durable job database.
+- Physical-device installation and end-to-end testing have not been performed by CI.
