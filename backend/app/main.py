@@ -33,6 +33,15 @@ class ReviewRequest(BaseModel):
     model: str
     project: ProjectPayload
 
+class PlanRequest(BaseModel):
+    base_url: str
+    api_key: str
+    model: str
+    name: str
+    description: str
+    kind: str = "Web app"
+    files: dict[str, str] = Field(default_factory=dict)
+
 class PublishRequest(BaseModel):
     token: str
     owner: str | None = None
@@ -79,8 +88,23 @@ async def list_models(body: ProviderRequest):
         raise HTTPException(response.status_code, f"Provider returned {response.status_code}: {response.text[:700]}")
     data = response.json()
     rows = data.get("data", []) if isinstance(data, dict) else []
-    models = [{"id": row.get("id", ""), "owned_by": row.get("owned_by"), "created": row.get("created")} for row in rows if row.get("id")]
+    models = [{"id": row.get("id", ""), "owned_by": row.get("owned_by"), "created": row.get("created"), "context_window": row.get("context_window"), "input_price": row.get("input_price"), "output_price": row.get("output_price")} for row in rows if row.get("id")]
     return {"models": models, "metadata_note": "The OpenAI-compatible models endpoint generally does not provide verified pricing, context-window limits, or coding benchmark scores."}
+
+@app.post("/api/agent/plan")
+async def plan_project(body: PlanRequest):
+    if not body.description.strip():
+        raise HTTPException(400, "Project description is required")
+    file_context = "\n\n".join(f"--- FILE: {path} ---\n{content[:12000]}" for path, content in list(body.files.items())[:25])
+    system = """You are OneByte Coder's principal product architect. Analyze the user's brief before coding. Return ONLY valid JSON: {"summary":string,"plan":{"title":string,"summary":string,"steps":[string],"requirements":[string],"architecture":string,"stack":[string],"file_tree":[string],"acceptance_criteria":[string],"risks":[string]}}. Recommend a suitable language, framework, database only if needed, API boundaries, design system, responsive behavior, security controls, tests and deployment. State assumptions. Never invent library versions or claim code has been executed."""
+    user = f"Project: {body.name}\nType: {body.kind}\nBrief:\n{body.description}\n\nImported files:\n{file_context or '(none)'}"
+    data = await provider_post(body.base_url, body.api_key, {"model": body.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": 0.15, "response_format": {"type": "json_object"}})
+    try:
+        result = json.loads(data["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise HTTPException(502, "Planner response was not valid JSON. Choose a model that supports JSON mode.") from exc
+    return {"summary": result.get("summary", "Project analysis complete."), "plan": result.get("plan") or {}}
+
 
 @app.post("/api/agent/execute")
 async def execute_agent(body: AgentRequest):
