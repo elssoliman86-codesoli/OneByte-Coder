@@ -328,7 +328,9 @@ jobs:
         if: success()
         with:
           name: windows-exe-or-build-output
-          path: |\n            dist/\n            publish/\n          if-no-files-found: warn
+          path: |
+            dist/
+            publish/\n          if-no-files-found: warn
 """
         elif kind in {"cli", "terminal", "command line"}:
             build_workflow = """name: Package CLI project
