@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, re, os
+import json, re, os, math
 from urllib.parse import quote
 from typing import Any
 import httpx
@@ -278,7 +278,17 @@ async def review_project(body: ReviewRequest):
         result = json.loads(data["choices"][0]["message"]["content"])
     except Exception as exc:
         raise HTTPException(502, "Reviewer response was not valid JSON") from exc
-    result["score"] = max(0, min(10, float(result.get("score", 0))))
+    if not isinstance(result, dict):
+        raise HTTPException(502, "Reviewer response must be a JSON object")
+    try:
+        score = float(result.get("score", 0))
+    except (TypeError, ValueError):
+        score = 0.0
+    if not math.isfinite(score):
+        score = 0.0
+    result["score"] = max(0.0, min(10.0, score))
+    if not isinstance(result.get("findings"), list):
+        result["findings"] = []
     return result
 
 
