@@ -26,3 +26,17 @@ The GitHub Actions frontend and Android build workflows are configured to verify
 - AI review is model-assisted static review, not a security certification.
 - Publishing uploads source to GitHub; APK/EXE release packaging and website hosting are separate workflows.
 - A debug APK is not a signed production release.
+
+## Latest Android build
+
+- Source commit: `2f7570b8d10717f35a146687e68c5ae069467fdb`
+- GitHub Actions run: [Build Android APK #?](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41034536500)
+- Result: successful Android debug APK build and artifact upload.
+- Artifact: `onebyte-coder-debug-apk` (3,483,264 bytes).
+- Artifact ID: `12967441426`.
+- SHA-256: `7bf3589458a3ab7bf9a2f1902427c36f10853e5b7cc39993b7e4f52aada041c6`.
+- Physical Android installation and device testing have not been performed.
+
+## Hosting note
+
+The GitHub Pages frontend build completed successfully, but deployment returned HTTP 404 because GitHub Pages is not enabled for this repository. Enable Pages in repository Settings → Pages before expecting a hosted URL.
