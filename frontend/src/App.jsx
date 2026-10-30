@@ -107,7 +107,7 @@ export default function App(){
   const next={...files};let totalBytes=Object.values(next).reduce((n,v)=>n+(typeof v==='string'?new Blob([v]).size:0),0);let imported=0;
   const normalizePath=value=>String(value||'').replace(/\\/g,'/').replace(/^\.\/+/, '');
   const isTextPath=value=>{const name=value.split('/').pop().toLowerCase();const ext=name.includes('.')?name.split('.').pop():'';return ['js','jsx','ts','tsx','mjs','cjs','py','html','htm','css','scss','sass','less','json','md','txt','xml','svg','yml','yaml','toml','ini','cfg','conf','sh','bat','ps1','java','kt','c','h','cpp','hpp','cs','go','rs','php','rb','swift','sql','graphql','vue','svelte','astro'].includes(ext)||['dockerfile','makefile','license','readme','.gitignore','.dockerignore','.env.example','.env.sample','.env.template'].includes(name)};
-  const safePath=value=>{const path=normalizePath(value);const parts=path.split('/');const name=parts.at(-1)?.toLowerCase()||'';const sensitive=name==='.env'||(name.startsWith('.env.')&&!['.env.example','.env.sample','.env.template'].includes(name))||['.npmrc','.pypirc','credentials.json','secrets.json','service-account.json','id_rsa','id_ed25519'].includes(name)||/\.(pem|key|p12|pfx|keystore|jks)$/.test(name);return !!path&&!path.startsWith('/')&&!/^[a-z]:/i.test(path)&&!parts.some(part=>!part||part==='..'||part==='.')&&!parts.some(part=>['.git','node_modules','.venv','venv','__pycache__'].includes(part.toLowerCase()))&&!sensitive};
+  const safePath=value=>{const path=normalizePath(value);const parts=path.split('/');const name=parts.at(-1)?.toLowerCase()||'';const sensitive=name==='.env'||(name.startsWith('.env.')&&!['.env.example','.env.sample','.env.template'].includes(name))||['.npmrc','.pypirc','credentials','credentials.json','secrets.json','service-account.json','id_rsa','id_ed25519','known_hosts'].includes(name)||/\\.(pem|key|p12|pfx|keystore|jks)$/.test(name);return !!path&&!path.startsWith('/')&&!/^[a-z]:/i.test(path)&&!parts.some(part=>!part||part==='..'||part==='.')&&!parts.some(part=>['.git','node_modules','.venv','venv','__pycache__'].includes(part.toLowerCase()))&&!sensitive};
   try{
    for(const file of Array.from(list||[])){
     if(file.name.toLowerCase().endsWith('.zip')){
@@ -123,7 +123,7 @@ export default function App(){
      }
     }else{
      const path=normalizePath(file.webkitRelativePath||file.name);
-     if(!safePath(path))continue;
+     if(!safePath(path)||!isTextPath(path))continue;
      if(file.size>500000||totalBytes+file.size>8*1024*1024)throw Error('Imported files exceed the 8 MB text limit');
      next[path]=await file.text();totalBytes+=file.size;imported++;
     }
