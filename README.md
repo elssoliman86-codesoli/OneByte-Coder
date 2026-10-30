@@ -30,7 +30,22 @@ OneByte Coder is an Android-first AI coding workspace. It separates project plan
 - Import/publish path validation, secret-file blocking, bounded text-file sizes and rejection of incomplete streamed file blocks.
 - Dependency security gate in CI: npm audit must pass without high/critical vulnerabilities.
 
-- Backend regression tests and GitHub Actions CI.
+- Backend regression tests (16 passing in the verified CI run) and GitHub Actions CI.
+
+## Latest verification — 2026-10-30
+
+The implementation was verified through GitHub Actions:
+
+| Check | Result | Run |
+|---|---|---|
+| Backend API regression suite | 16 passed | [Backend tests](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41047935373) |
+| Frontend production build | Passed; full and production npm audits report zero vulnerabilities | [Frontend CI](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41048863579) |
+| Android debug APK | Passed; Capacitor secure-storage plugin registration verified | [Android build](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41048591618) |
+| GitHub Pages frontend bundle | Build passed; deployment skipped because Pages is not enabled | [Pages workflow](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41048591633) |
+
+The Android artifact is named `onebyte-coder-debug-apk`. It is a test/debug APK, not a signed Play Store release. CI does not install it on a physical phone.
+
+See [Implementation status](docs/IMPLEMENTATION-STATUS.md) for verified scope and remaining limitations.
 
 ## Run locally
 
