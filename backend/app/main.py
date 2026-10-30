@@ -47,6 +47,7 @@ class PublishRequest(BaseModel):
     owner: str | None = None
     repo_name: str
     description: str = ""
+    kind: str = "Web app"
     files: dict[str, str]
     make_private: bool = False
 
@@ -190,6 +191,137 @@ async def publish_to_github(body: PublishRequest):
         readme = f"# {repo_name}\n\n{body.description or 'Built with OneByte Coder.'}\n\n## Development\n\nSee project files for setup instructions.\n\n---\nGenerated with [OneByte Coder](https://github.com/{login}/OneByte-Coder).\n"
         uploads = dict(body.files)
         uploads.setdefault("README.md", readme)
+        kind = body.kind.strip().lower()
+        build_workflow = None
+        if kind in {"website", "web app", "web"}:
+            build_workflow = """name: Build and deploy website
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build site
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            npm install
+            npm run build --if-present
+          fi
+          if [ -d dist ]; then echo "SITE_DIR=dist" >> "$GITHUB_ENV"
+          elif [ -d build ]; then echo "SITE_DIR=build" >> "$GITHUB_ENV"
+          else echo "SITE_DIR=." >> "$GITHUB_ENV"; fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.SITE_DIR }}
+      - id: deployment
+        uses: actions/deploy-pages@v4
+"""
+        elif kind in {"android app", "android", "apk"}:
+            build_workflow = """name: Build Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build Capacitor Android app
+        run: |
+          npm install
+          npm run build
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+"""
+        elif kind in {"desktop app", "desktop", "exe", "windows app"}:
+            build_workflow = """name: Build Windows executable
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build Python desktop executable when entry point exists
+        shell: pwsh
+        run: |
+          if (!(Test-Path requirements.txt)) { Write-Output "No requirements.txt; source-only build."; exit 0 }
+          $entry = @("main.py", "app.py", "src/main.py") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (!$entry) { throw "No main.py, app.py or src/main.py entry point was found." }
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+          pyinstaller --noconfirm --onefile --name OneByteApp $entry
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: windows-exe-or-build-output
+          path: dist/
+          if-no-files-found: warn
+"""
+        elif kind in {"cli", "terminal", "command line"}:
+            build_workflow = """name: Package CLI project
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create source package
+        run: zip -r cli-source.zip . -x '.git/*' '.github/*'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-source-package
+          path: cli-source.zip
+"""
+        if build_workflow:
+            uploads[".github/workflows/onebyte-build.yml"] = build_workflow
         results = []
         for path, content in uploads.items():
             clean = path.replace("\\", "/").lstrip("/")
