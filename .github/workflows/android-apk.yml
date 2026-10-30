@@ -34,6 +34,8 @@ jobs:
       - name: Set Android Keystore minimum SDK
         run: sed -i 's/minSdkVersion = 22/minSdkVersion = 23/' android/variables.gradle
       - run: npx cap sync android
+      - name: Verify native secure-storage plugin registration
+        run: grep -q "OneByteSecureStorage" android/app/src/main/assets/capacitor.plugins.json
       - name: Build debug APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
