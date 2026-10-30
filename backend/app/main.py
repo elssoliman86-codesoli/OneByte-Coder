@@ -119,9 +119,19 @@ async def list_models(body: ProviderRequest):
         raise HTTPException(502, f"Could not reach provider: {exc}") from exc
     if response.status_code >= 400:
         raise HTTPException(response.status_code, f"Provider returned {response.status_code}: {response.text[:700]}")
-    data = response.json()
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise HTTPException(502, "Provider returned invalid model-list JSON") from exc
     rows = data.get("data", []) if isinstance(data, dict) else []
-    models = [{"id": row.get("id", ""), "owned_by": row.get("owned_by"), "created": row.get("created"), "context_window": row.get("context_window"), "input_price": row.get("input_price"), "output_price": row.get("output_price")} for row in rows if row.get("id")]
+    if not isinstance(rows, list):
+        raise HTTPException(502, "Provider model list has an unexpected format")
+    models = [
+        {"id": row.get("id", ""), "owned_by": row.get("owned_by"), "created": row.get("created"),
+         "context_window": row.get("context_window"), "input_price": row.get("input_price"),
+         "output_price": row.get("output_price")}
+        for row in rows if isinstance(row, dict) and row.get("id")
+    ]
     return {"models": models, "metadata_note": "The OpenAI-compatible models endpoint generally does not provide verified pricing, context-window limits, or coding benchmark scores."}
 
 
@@ -286,7 +296,9 @@ async def publish_to_github(body: PublishRequest):
                 raise HTTPException(created.status_code, f"Could not create repository: {created.text[:700]}")
             repo = created.json()
             full = repo["full_name"]
-        branch = repo.get("default_branch", "main")
+        branch = repo.get("default_branch") or "main"
+        repo_name = repo.get("name") or body.repo_name.strip() or "project"
+        login = (repo.get("owner") or {}).get("login") or full.split("/", 1)[0]
         readme = f"""# {repo_name}
 
 {body.description or "Built with OneByte Coder."}
@@ -378,15 +390,32 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Build Capacitor Android app
+      - name: Build Android application
+        shell: bash
         run: |
-          npm install
-          npm run build
-          npx cap sync android
-          sed -i 's/minSdkVersion = 22/minSdkVersion = 23/' android/variables.gradle
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          if [ -f android/gradlew ]; then
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          elif [ -f package.json ]; then
+            npm install
+            npm install @capacitor/core @capacitor/android
+            npm install --save-dev @capacitor/cli
+            npm run build --if-present
+            if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.js ]; then
+              if [ -d dist ]; then WEB_DIR=dist; else WEB_DIR=.; fi
+              printf '{"appId":"com.onebyte.generated","appName":"OneByte Project","webDir":"%s"}\n' "$WEB_DIR" > capacitor.config.json
+            fi
+            if [ ! -d android ]; then npx cap add android; fi
+            npx cap sync android
+            if [ -f android/variables.gradle ]; then sed -i 's/minSdkVersion = 22/minSdkVersion = 23/' android/variables.gradle; fi
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            echo "No Android Gradle project or Node/Capacitor project was found." >&2
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: android-debug-apk
@@ -429,7 +458,8 @@ jobs:
           name: windows-exe-or-build-output
           path: |
             dist/
-            publish/\n          if-no-files-found: warn
+            publish/
+          if-no-files-found: warn
 """
         elif kind in {"cli", "terminal", "command line"}:
             build_workflow = """name: Package CLI project
@@ -452,6 +482,8 @@ jobs:
           path: cli-source.zip
 """
         if build_workflow:
+            # Follow the target repository's actual default branch, not an assumed "main".
+            build_workflow = build_workflow.replace("branches: [main]", f'branches: ["{branch}"]')
             uploads[".github/workflows/onebyte-build.yml"] = build_workflow
         results = []
         for path, content in uploads.items():
