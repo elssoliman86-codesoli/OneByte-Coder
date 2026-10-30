@@ -49,6 +49,7 @@ class PublishRequest(BaseModel):
     token: str
     owner: str | None = None
     repo_name: str
+    existing_repo: str | None = None
     description: str = ""
     kind: str = "Web app"
     files: dict[str, str]
@@ -207,27 +208,85 @@ async def review_project(body: ReviewRequest):
     result["score"] = max(0, min(10, float(result.get("score", 0))))
     return result
 
+
+class GitHubImportRequest(BaseModel):
+    token: str
+    repository: str
+
+@app.post("/api/github/import")
+async def import_github_repository(body: GitHubImportRequest):
+    match = re.fullmatch(r"([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", body.repository.strip())
+    if not match:
+        raise HTTPException(400, "Repository must use owner/name format")
+    owner, name = match.groups()
+    headers = {"Authorization": f"Bearer {body.token}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    async with httpx.AsyncClient(timeout=60) as client:
+        repo_response = await client.get(f"https://api.github.com/repos/{owner}/{name}", headers=headers)
+        if repo_response.status_code >= 400:
+            raise HTTPException(repo_response.status_code, f"Cannot read repository: {repo_response.text[:500]}")
+        repo_data = repo_response.json()
+        branch = repo_data.get("default_branch") or "main"
+        tree_response = await client.get(f"https://api.github.com/repos/{owner}/{name}/git/trees/{quote(branch, safe='')}?recursive=1", headers=headers)
+        if tree_response.status_code >= 400:
+            raise HTTPException(tree_response.status_code, f"Cannot read repository tree: {tree_response.text[:500]}")
+        tree = tree_response.json().get("tree", [])
+        files: dict[str, str] = {}
+        total_bytes = 0
+        ignored = (".git/", "node_modules/", "dist/", "build/", ".next/", "vendor/")
+        for item in tree:
+            path = item.get("path", "")
+            if item.get("type") != "blob" or not path or path.startswith(ignored) or item.get("size", 0) > 500_000:
+                continue
+            if len(files) >= 150 or total_bytes >= 5_000_000:
+                break
+            response = await client.get(f"https://api.github.com/repos/{owner}/{name}/contents/{quote(path, safe='/')}?ref={quote(branch, safe='')}", headers=headers)
+            if response.status_code != 200:
+                continue
+            data = response.json()
+            if data.get("encoding") != "base64" or not data.get("content"):
+                continue
+            try:
+                import base64
+                content = base64.b64decode(data["content"]).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                continue
+            total_bytes += len(content.encode("utf-8"))
+            files[path] = content
+    return {"repository": repo_data.get("html_url"), "name": name, "description": repo_data.get("description") or "", "branch": branch, "files": files, "files_imported": len(files)}
+
 @app.post("/api/github/publish")
 async def publish_to_github(body: PublishRequest):
     """Create a GitHub repository and upload source files. Token is used only for this request."""
     headers = {"Authorization": f"Bearer {body.token}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
     async with httpx.AsyncClient(timeout=60) as client:
-        me = await client.get("https://api.github.com/user", headers=headers)
-        if me.status_code >= 400:
-            raise HTTPException(me.status_code, "GitHub authentication failed. Check token and permissions.")
-        login = me.json().get("login")
-        owner = body.owner or login
-        if owner != login:
-            raise HTTPException(403, "This starter currently publishes only to the authenticated user's own account.")
-        repo_name = re.sub(r"[^A-Za-z0-9_.-]", "-", body.repo_name).strip(".-")
-        if not repo_name:
-            raise HTTPException(400, "Repository name is invalid")
-        created = await client.post("https://api.github.com/user/repos", headers=headers, json={"name": repo_name, "description": body.description[:350], "private": body.make_private, "auto_init": True})
-        if created.status_code == 422:
-            raise HTTPException(409, "Repository already exists. Choose another name or import the existing repository.")
-        if created.status_code >= 400:
-            raise HTTPException(created.status_code, f"Could not create repository: {created.text[:700]}")
-        repo = created.json(); full = repo["full_name"]; branch = repo.get("default_branch", "main")
+        if body.existing_repo:
+            match = re.fullmatch(r"([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", body.existing_repo.strip())
+            if not match:
+                raise HTTPException(400, "Existing repository must use owner/name format")
+            full = body.existing_repo.strip()
+            existing = await client.get(f"https://api.github.com/repos/{full}", headers=headers)
+            if existing.status_code >= 400:
+                raise HTTPException(existing.status_code, f"Cannot access target repository: {existing.text[:600]}")
+            repo = existing.json()
+        else:
+            me = await client.get("https://api.github.com/user", headers=headers)
+            if me.status_code >= 400:
+                raise HTTPException(me.status_code, "GitHub authentication failed. Check token and permissions.")
+            login = me.json().get("login")
+            owner = body.owner or login
+            if owner != login:
+                raise HTTPException(403, "Creating new repositories is currently limited to the authenticated user's own account.")
+            repo_name = re.sub(r"[^A-Za-z0-9_.-]", "-", body.repo_name).strip(".-")
+            if not repo_name:
+                raise HTTPException(400, "Repository name is invalid")
+            created = await client.post("https://api.github.com/user/repos", headers=headers, json={"name": repo_name, "description": body.description[:350], "private": body.make_private, "auto_init": True})
+            if created.status_code == 422:
+                raise HTTPException(409, "Repository already exists. Use owner/name to update it.")
+            if created.status_code >= 400:
+                raise HTTPException(created.status_code, f"Could not create repository: {created.text[:700]}")
+            repo = created.json()
+            full = repo["full_name"]
+        branch = repo.get("default_branch", "main")
         readme = f"""# {repo_name}
 
 {body.description or "Built with OneByte Coder."}
@@ -399,7 +458,14 @@ jobs:
             clean = path.replace("\\", "/").lstrip("/")
             if not clean or ".." in clean.split("/") or clean.startswith(".git/"):
                 continue
-            response = await client.put(f"https://api.github.com/repos/{full}/contents/{quote(clean, safe='/')}", headers=headers, json={"message": f"Add {clean}", "content": __import__('base64').b64encode(content.encode()).decode(), "branch": branch})
+            contents_url = f"https://api.github.com/repos/{full}/contents/{quote(clean, safe='/')}"
+            current = await client.get(contents_url, headers=headers, params={"ref": branch})
+            if current.status_code not in (200, 404):
+                raise HTTPException(current.status_code, f"Could not inspect existing file {clean}: {current.text[:400]}")
+            upload_payload = {"message": f"Update {clean}" if current.status_code == 200 else f"Add {clean}", "content": __import__('base64').b64encode(content.encode()).decode(), "branch": branch}
+            if current.status_code == 200:
+                upload_payload["sha"] = current.json().get("sha")
+            response = await client.put(contents_url, headers=headers, json=upload_payload)
             if response.status_code >= 400:
                 raise HTTPException(response.status_code, f"Upload failed for {clean}: {response.text[:500]}")
             results.append(clean)
