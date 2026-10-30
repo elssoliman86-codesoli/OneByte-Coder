@@ -190,7 +190,7 @@ async def list_models(body: ProviderRequest):
     if not isinstance(rows, list):
         raise HTTPException(502, "Provider model list has an unexpected format")
     models = [
-        {"id": row.get("id", ""), "owned_by": row.get("owned_by"), "created": row.get("created"),
+        {"id": str(row.get("id") or ""), "owned_by": row.get("owned_by"), "created": row.get("created"),
          "context_window": row.get("context_window"), "input_price": row.get("input_price"),
          "output_price": row.get("output_price")}
         for row in rows if isinstance(row, dict) and row.get("id")
@@ -235,7 +235,13 @@ async def plan_project(body: PlanRequest):
         result = json.loads(data["choices"][0]["message"]["content"])
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(502, "Planner response was not valid JSON. Choose a model that supports JSON mode.") from exc
-    return {"summary": result.get("summary", "Project analysis complete."), "plan": result.get("plan") or {}}
+    if not isinstance(result, dict):
+        raise HTTPException(502, "Planner response must be a JSON object")
+    plan = result.get("plan")
+    if not isinstance(plan, dict):
+        plan = {}
+    summary = result.get("summary", "Project analysis complete.")
+    return {"summary": summary if isinstance(summary, str) else "Project analysis complete.", "plan": plan}
 
 
 @app.post("/api/agent/execute")
@@ -254,8 +260,13 @@ async def execute_agent(body: AgentRequest):
         result = json.loads(content)
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(502, "Model response did not match the required JSON schema. Try a model that supports JSON mode.") from exc
+    if not isinstance(result, dict):
+        raise HTTPException(502, "Coder response must be a JSON object")
+    generated_files = result.get("files") or {}
+    if not isinstance(generated_files, dict):
+        raise HTTPException(502, "Coder response files must be a JSON object")
     safe_files = {}
-    for path, content in (result.get("files") or {}).items():
+    for path, content in generated_files.items():
         clean = normalize_project_path(path)
         if clean is None or is_sensitive_project_path(clean) or not isinstance(content, str):
             continue
