@@ -96,7 +96,7 @@ export default function App(){
  useEffect(()=>{localStorage.setItem('onebyte.model',model)},[model]);
  useEffect(()=>{localStorage.setItem('onebyte.plannerModel',plannerModel)},[plannerModel]);
  useEffect(()=>{localStorage.setItem('onebyte.reviewModel',reviewModel)},[reviewModel]);
- useEffect(()=>{localStorage.setItem('onebyte.apiBase',apiBase.trim().replace(/\\/+$/,''))},[apiBase]);
+ useEffect(()=>{localStorage.setItem('onebyte.apiBase',apiBase.trim().replace(/\/+$/,''))},[apiBase]);
  useEffect(()=>{let alive=true;(async()=>{try{const [apiKey,token]=await Promise.all([getSecret('provider_api_key'),getSecret('github_token')]);if(!alive)return;setProvider(p=>({...p,apiKey:apiKey||''}));setGithubToken(token||'')}catch(e){flash('Secure storage unavailable: '+e.message)}finally{if(alive)setSecretsReady(true)}})();return()=>{alive=false}},[]);
  useEffect(()=>{if(!secretsReady)return;(provider.apiKey?setSecret('provider_api_key',provider.apiKey):removeSecret('provider_api_key')).catch(e=>flash('Could not store provider key securely: '+e.message))},[provider.apiKey,secretsReady]);
  useEffect(()=>{if(!secretsReady)return;(githubToken?setSecret('github_token',githubToken):removeSecret('github_token')).catch(e=>flash('Could not store GitHub token securely: '+e.message))},[githubToken,secretsReady]);
