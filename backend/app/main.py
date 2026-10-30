@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, re
+import json, re, os
 from urllib.parse import quote
 from typing import Any
 import httpx
@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
 
 app = FastAPI(title="OneByte Coder API", version="0.1.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "capacitor://localhost", "http://localhost"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+_default_origins = "http://localhost:5173,http://127.0.0.1:5173,capacitor://localhost,http://localhost,https://localhost"
+_allowed_origins = [origin.strip() for origin in os.getenv("ONEBYTE_ALLOWED_ORIGINS", _default_origins).split(",") if origin.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_allowed_origins, allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
 class ProviderRequest(BaseModel):
     base_url: str
@@ -141,7 +143,7 @@ def select_relevant_skills(raw: str, project_kind: str, task: str) -> str:
             include = include or any(term in heading for term in ("premium ui", "android engineering", "visual qa"))
         if any(term in context for term in ("backend", "api", "database", "server", "fastapi", "sql")):
             include = include or "backend and database" in heading
-        if any(term in context for term in ("cli", "terminal", "command line", "shell")):
+        if any(term in context for term in ("cli", "terminal", "command line", "shell", "python")):
             include = include or "cli and terminal" in heading
         if any(term in context for term in ("desktop", "windows", "exe")):
             include = include or "desktop" in heading
