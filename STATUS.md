@@ -1,42 +1,32 @@
 # Implementation status
 
-## Delivered in the current source update
+## Implemented in source
 
-- Added a structured Planner API endpoint and connected project creation to brief analysis.
-- Added separate Planner and Coding model selectors, retaining the independent Reviewer model.
-- Added a sequential implementation queue with visible queued, running, completed and failed states.
-- Added a Skills.md editor in Settings and persistent custom instructions passed to coding requests.
-- Added model metadata passthrough for context-window and pricing fields only when provided by the model provider.
-- Added filterable model details and explicit "not tested" status for coding benchmarks.
-- Added a sandboxed HTML preview for projects containing an index.html entry file.
-- Refined the workspace UI and added queue/model metadata styles.
-- Updated product documentation.
+- Separate Planner, Coder and Reviewer model roles.
+- Structured project planning with architecture, stack, requirements, proposed file tree, acceptance criteria and risks.
+- Streaming coding endpoint at `/api/agent/execute/stream`, using OpenAI-compatible SSE upstream and newline-delimited JSON downstream.
+- Frontend consumes file-start/file-delta/file-end events and updates Monaco content as chunks arrive.
+- Sequential implementation queue is persisted locally and interrupted running jobs resume as queued after reload.
+- Native Android secure-storage plugin encrypts API credentials with AES-GCM and Android Keystore; browser mode uses memory-only storage.
+- Per-model HTTP status and latency test endpoint.
+- HTML preview inlines project CSS and classic JS assets when present; sandboxed DOM audit reports touch target size, overlapping controls, missing labels and horizontal overflow.
+- GitHub publishing generates README and a project-specific Actions workflow for website, Android, Windows Python/.NET or CLI packaging.
+- Backend regression tests and backend CI workflow.
 
-## Verification status
+## Verification boundaries
 
-The GitHub Actions frontend and Android build workflows are configured to verify the current source. A successful production build or APK packaging run verifies compilation and packaging only; it does not prove runtime functionality on a physical phone.
+- Backend CI passed on commit `cf8852712631eb66a03fff9385c6ddae77510c2b`.
+- Frontend production build and Capacitor sync passed on later source commits. The current APK workflow is being verified separately; do not treat an earlier artifact as containing newer commits.
+- Successful build packaging does not prove physical-device runtime behavior.
 
-## Known limitations
+## Remaining work
 
-- API keys are session-scoped, not stored using Android Keystore-backed secure storage.
-- Monaco does not yet receive token-by-token code streaming; files are applied after a complete structured model response.
-- Queue state is not durable across application restarts.
-- Python/CLI/Android/desktop runtime execution requires isolated runtime/build workers.
-- The model provider may not expose prices, context windows or coding benchmark results.
-- AI review is model-assisted static review, not a security certification.
-- Publishing uploads source to GitHub; APK/EXE release packaging and website hosting are separate workflows.
-- A debug APK is not a signed production release.
-
-## Latest Android build
-
-- Source commit: `2f7570b8d10717f35a146687e68c5ae069467fdb`
-- GitHub Actions run: [Build Android APK #?](https://github.com/elssoliman86-codesoli/OneByte-Coder/actions/runs/41034536500)
-- Result: successful Android debug APK build and artifact upload.
-- Artifact: `onebyte-coder-debug-apk` (3,483,264 bytes).
-- Artifact ID: `12967441426`.
-- SHA-256: `7bf3589458a3ab7bf9a2f1902427c36f10853e5b7cc39993b7e4f52aada041c6`.
-- Physical Android installation and device testing have not been performed.
-
-## Hosting note
-
-The GitHub Pages frontend build completed successfully, but deployment returned HTTP 404 because GitHub Pages is not enabled for this repository. Enable Pages in repository Settings → Pages before expecting a hosted URL.
+- Full isolated runtime workers for Python, CLI, Android and desktop projects.
+- Complete bundler-backed Vite/React/Next preview and screenshot capture.
+- Automated screenshot-based visual critique and correction loop; current preview audit is DOM heuristic-based only.
+- Actual SAST/DAST tooling and dependency vulnerability scans; model review alone is not a security scan.
+- Server-side durable queue, cancellation/retry controls and job history.
+- Signed Android release build with user-provided keystore secrets.
+- GitHub Pages repository setting must be enabled by an owner before deployment.
+- Desktop build automation currently supports Python and .NET, not every possible desktop framework.
+- Physical-device installation and full end-to-end testing.
