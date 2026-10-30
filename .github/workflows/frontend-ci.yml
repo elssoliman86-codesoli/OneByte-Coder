@@ -1,13 +1,23 @@
 name: Frontend build verification
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'skills/**'
+      - '.github/workflows/frontend-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'frontend/**'
+      - 'skills/**'
       - '.github/workflows/frontend-ci.yml'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
