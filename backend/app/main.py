@@ -188,7 +188,32 @@ async def publish_to_github(body: PublishRequest):
         if created.status_code >= 400:
             raise HTTPException(created.status_code, f"Could not create repository: {created.text[:700]}")
         repo = created.json(); full = repo["full_name"]; branch = repo.get("default_branch", "main")
-        readme = f"# {repo_name}\n\n{body.description or 'Built with OneByte Coder.'}\n\n## Development\n\nSee project files for setup instructions.\n\n---\nGenerated with [OneByte Coder](https://github.com/{login}/OneByte-Coder).\n"
+        readme = f"""# {repo_name}
+
+{body.description or "Built with OneByte Coder."}
+
+## Project type
+
+{body.kind}
+
+## Getting started
+
+- Review the project files and install the dependencies required by the selected stack.
+- Configure credentials through environment variables; never commit API keys or tokens.
+- Use the generated GitHub Actions workflow for supported build or deployment targets.
+
+## Build and deployment
+
+For static websites, enable GitHub Pages in Settings → Pages → Build and deployment → GitHub Actions before the first deployment.
+The workflow cannot enable repository Pages settings on its own.
+
+- A successful source upload does not mean the build or deployment has completed.
+- Android debug APKs are for testing and are not Play Store-signed releases.
+- Windows executable packaging supports Python entry points and .NET projects.
+
+---
+Generated with [OneByte Coder](https://github.com/{login}/OneByte-Coder).
+"""
         uploads = dict(body.files)
         uploads.setdefault("README.md", readme)
         kind = body.kind.strip().lower()
@@ -287,12 +312,17 @@ jobs:
       - name: Build Python desktop executable when entry point exists
         shell: pwsh
         run: |
-          if (!(Test-Path requirements.txt)) { Write-Output "No requirements.txt; source-only build."; exit 0 }
-          $entry = @("main.py", "app.py", "src/main.py") | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (!$entry) { throw "No main.py, app.py or src/main.py entry point was found." }
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyinstaller
-          pyinstaller --noconfirm --onefile --name OneByteApp $entry
+          if (Test-Path *.csproj) {
+            $project = Get-ChildItem *.csproj | Select-Object -First 1
+            dotnet publish $project.FullName -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+          } else {
+            python -m pip install --upgrade pip
+            if (Test-Path requirements.txt) { python -m pip install -r requirements.txt }
+            $entry = @("main.py", "app.py", "src/main.py") | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (!$entry) { throw "No Python entry point or .NET project was found." }
+            python -m pip install pyinstaller
+            pyinstaller --noconfirm --onefile --name OneByteApp $entry
+          }
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -331,7 +361,7 @@ jobs:
             if response.status_code >= 400:
                 raise HTTPException(response.status_code, f"Upload failed for {clean}: {response.text[:500]}")
             results.append(clean)
-    return {"repository": repo.get("html_url"), "branch": branch, "files_uploaded": len(results), "pages_note": "GitHub Pages can be enabled for static web projects after adding a build workflow. APK/EXE artifacts require platform-specific CI builds."}
+    return {"repository": repo.get("html_url"), "branch": branch, "files_uploaded": len(results), "workflow_path": ".github/workflows/onebyte-build.yml" if build_workflow else None, "workflow_url": repo.get("html_url") + "/actions/workflows/onebyte-build.yml" if build_workflow else None, "pages_note": "Enable Settings → Pages → Build and deployment → GitHub Actions before the first static website deployment." if kind in {"website", "web app", "web"} else None}
 
 
 # Streaming implementation endpoint. The frontend consumes newline-delimited JSON events
