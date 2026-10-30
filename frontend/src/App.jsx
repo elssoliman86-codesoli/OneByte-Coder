@@ -38,7 +38,7 @@ export default function App(){
  const [projectKind,setProjectKind]=useState('Web app');
  const [projects,setProjects]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem('onebyte.projects'));if(saved?.length)return saved}catch{}return [{id:'default',name:localStorage.getItem('onebyte.project')||'My first project',kind:'Web app',files:(()=>{try{return JSON.parse(localStorage.getItem('onebyte.files'))||starterFiles}catch{return starterFiles}})()}]});
  const [activeProjectId,setActiveProjectId]=useState(()=>localStorage.getItem('onebyte.activeProject')||'default');
- const [queue,setQueue]=useState([]);
+ const [queue,setQueue]=useState(()=>{try{return (JSON.parse(localStorage.getItem('onebyte.queue'))||[]).map(q=>q.status==='running'?{...q,status:'queued'}:q)}catch{return []}});
  const [queueBusy,setQueueBusy]=useState(false);
  const [skills,setSkills]=useState(()=>localStorage.getItem('onebyte.skills')||builtInSkills);
  const [modelFilter,setModelFilter]=useState('');
@@ -52,6 +52,7 @@ export default function App(){
  useEffect(()=>{setProjects(ps=>{const record={id:activeProjectId,name:project,kind:projectKind,files};const next=ps.some(p=>p.id===activeProjectId)?ps.map(p=>p.id===activeProjectId?record:p):[record,...ps];localStorage.setItem('onebyte.projects',JSON.stringify(next));return next})},[files,project,projectKind,activeProjectId]);
  useEffect(()=>{localStorage.setItem('onebyte.activeProject',activeProjectId)},[activeProjectId]);
  useEffect(()=>{localStorage.setItem('onebyte.skills',skills)},[skills]);
+ useEffect(()=>{localStorage.setItem('onebyte.queue',JSON.stringify(queue))},[queue]);
  useEffect(()=>{const {apiKey,...safe}=provider;sessionStorage.setItem('onebyte.provider',JSON.stringify(safe))},[provider]);
  const fileList=useMemo(()=>Object.keys(files).sort((a,b)=>a.localeCompare(b)),[files]);
  const activeContent=files[selected]||'';
