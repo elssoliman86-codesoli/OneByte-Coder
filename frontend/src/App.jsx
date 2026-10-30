@@ -45,7 +45,7 @@ export default function App(){
  const [model,setModel]=useState(()=>localStorage.getItem('onebyte.model')||'gpt-4.1-mini');
  const [plannerModel,setPlannerModel]=useState(()=>localStorage.getItem('onebyte.plannerModel')||'gpt-4.1-mini');
  const [reviewModel,setReviewModel]=useState(()=>localStorage.getItem('onebyte.reviewModel')||'gpt-4.1-mini');
- const [apiBase,setApiBase]=useState(()=>localStorage.getItem('onebyte.apiBase')||DEFAULT_API);
+ useEffect(()=>{localStorage.setItem('onebyte.apiBase',apiBase.trim().replace(/\/+$/,''))},[apiBase]);
  const [githubToken,setGithubToken]=useState('');
  const [secretsReady,setSecretsReady]=useState(false);
  const [repoName,setRepoName]=useState('onebyte-project');
