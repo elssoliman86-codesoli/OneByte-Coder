@@ -27,6 +27,6 @@
   },
   "overrides": {
     "dompurify": "^3.4.17",
-    "monaco-editor": "^0.57.1"
+    "monaco-editor": "0.56.0"
   }
 }
