@@ -41,6 +41,7 @@ class PlanRequest(BaseModel):
     description: str
     kind: str = "Web app"
     files: dict[str, str] = Field(default_factory=dict)
+    skills: str = ""
 
 class PublishRequest(BaseModel):
     token: str
@@ -57,6 +58,33 @@ def normalized_base(url: str) -> str:
     if not value.startswith(("http://", "https://")):
         raise HTTPException(400, "Base URL must start with http:// or https://")
     return value
+
+
+def select_relevant_skills(raw: str, project_kind: str, task: str) -> str:
+    if not raw.strip():
+        return ""
+    sections = re.split(r"(?=^##\s+)", raw, flags=re.MULTILINE)
+    always_terms = ("requirement analysis", "architecture and stack", "code quality", "application security", "git and release", "model metadata integrity")
+    context = (project_kind + " " + task).lower()
+    selected = []
+    for section in sections:
+        heading = section.splitlines()[0].lower() if section.strip() else ""
+        if not heading.startswith("## "):
+            continue
+        include = any(term in heading for term in always_terms)
+        if any(term in context for term in ("website", "web app", "frontend", "html", "css", "react", "ui", "design")):
+            include = include or any(term in heading for term in ("premium ui", "web application engineering", "visual qa"))
+        if any(term in context for term in ("android", "mobile", "apk", "capacitor", "ios")):
+            include = include or any(term in heading for term in ("premium ui", "android engineering", "visual qa"))
+        if any(term in context for term in ("backend", "api", "database", "server", "fastapi", "sql")):
+            include = include or "backend and database" in heading
+        if any(term in context for term in ("cli", "terminal", "command line", "shell")):
+            include = include or "cli and terminal" in heading
+        if any(term in context for term in ("desktop", "windows", "exe")):
+            include = include or "desktop" in heading
+        if include:
+            selected.append(section.strip())
+    return "\n\n".join(selected)[:16000]
 
 async def provider_post(base: str, key: str, payload: dict[str, Any]) -> dict[str, Any]:
     url = normalized_base(base) + "/chat/completions"
@@ -121,6 +149,9 @@ async def plan_project(body: PlanRequest):
         raise HTTPException(400, "Project description is required")
     file_context = "\n\n".join(f"--- FILE: {path} ---\n{content[:12000]}" for path, content in list(body.files.items())[:25])
     system = """You are OneByte Coder's principal product architect. Analyze the user's brief before coding. Return ONLY valid JSON: {"summary":string,"plan":{"title":string,"summary":string,"steps":[string],"requirements":[string],"architecture":string,"stack":[string],"file_tree":[string],"acceptance_criteria":[string],"risks":[string]}}. Recommend a suitable language, framework, database only if needed, API boundaries, design system, responsive behavior, security controls, tests and deployment. State assumptions. Never invent library versions or claim code has been executed."""
+    selected_skills = select_relevant_skills(body.skills, body.kind, body.description)
+    if selected_skills:
+        system += "\n\nRELEVANT PROJECT SKILLS:\n" + selected_skills
     user = f"Project: {body.name}\nType: {body.kind}\nBrief:\n{body.description}\n\nImported files:\n{file_context or '(none)'}"
     data = await provider_post(body.base_url, body.api_key, {"model": body.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": 0.15, "response_format": {"type": "json_object"}})
     try:
@@ -136,8 +167,9 @@ async def execute_agent(body: AgentRequest):
         raise HTTPException(400, "Task is required")
     file_context = "\n\n".join(f"--- FILE: {path} ---\n{content[:18000]}" for path, content in list(body.project.files.items())[:35])
     system = """You are OneByte Coder's implementation agent. First understand the user's request and the project architecture. Return ONLY valid JSON with this schema: {\"summary\":string,\"plan\":{\"title\":string,\"summary\":string,\"steps\":[string]},\"files\":{\"relative/path\":\"complete replacement file content\"}}. Only include files that must be created or fully replaced. Never use markdown fences. Do not claim tests, runtime previews, visual inspection, security scans, or deployments were performed unless actual tool results are supplied. Keep secrets out of source files. Prefer maintainable, production-minded code and explain important tradeoffs in summary. If the user asks for a large feature, implement a coherent vertical slice rather than stubs."""
-    if body.skills.strip():
-        system += "\n\nUSER SKILLS / PROJECT RULES:\n" + body.skills[:12000]
+    selected_skills = select_relevant_skills(body.skills, body.project.description, body.task)
+    if selected_skills:
+        system += "\n\nRELEVANT USER SKILLS / PROJECT RULES:\n" + selected_skills
     user = f"Project: {body.project.name}\nBrief: {body.project.description}\nTask: {body.task}\n\nCurrent project files:\n{file_context or '(no files yet)'}"
     data = await provider_post(body.base_url, body.api_key, {"model": body.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "temperature": 0.2, "response_format": {"type": "json_object"}})
     try:
@@ -391,8 +423,9 @@ A concise explanation of the changes.
 COMPLETE FILE CONTENT HERE
 <ONEBYTE_FILE_END>
 Repeat ONEBYTE_FILE blocks for every file that must be created or fully replaced. File paths must be relative and must not contain .. segments. Do not emit partial snippets: each file block must contain the complete final file. Do not claim tests, runtime previews, visual inspection, security scans, or deployments were performed unless actual tool results are supplied. Keep secrets out of source files. Follow the supplied skills. The file end marker must be on its own line."""
-    if body.skills.strip():
-        system += "\n\nUSER SKILLS / PROJECT RULES:\n" + body.skills[:12000]
+    selected_skills = select_relevant_skills(body.skills, body.project.description, body.task)
+    if selected_skills:
+        system += "\n\nRELEVANT USER SKILLS / PROJECT RULES:\n" + selected_skills
     user = (
         f"Project: {body.project.name}\nBrief: {body.project.description}"
         f"\nTask: {body.task}\n\nCurrent project files:\n{file_context or '(no files yet)'}"
