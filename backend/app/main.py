@@ -487,7 +487,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Build Android application
         shell: bash
         run: |
