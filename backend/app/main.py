@@ -69,6 +69,8 @@ def normalize_project_path(path: str) -> str | None:
         return None
     normalized = re.sub(r"/+", "/", path.replace("\\", "/"))
     parts = normalized.split("/")
+    if any(ord(char) < 32 for char in normalized):
+        return None
     if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
         return None
     if any(part in {"..", ".git"} for part in parts):
@@ -254,8 +256,8 @@ async def execute_agent(body: AgentRequest):
         raise HTTPException(502, "Model response did not match the required JSON schema. Try a model that supports JSON mode.") from exc
     safe_files = {}
     for path, content in (result.get("files") or {}).items():
-        clean = path.replace("\\", "/").lstrip("/")
-        if not clean or ".." in clean.split("/") or not isinstance(content, str):
+        clean = normalize_project_path(path)
+        if clean is None or is_sensitive_project_path(clean) or not isinstance(content, str):
             continue
         if len(content) > 500_000:
             raise HTTPException(413, f"Generated file is too large: {clean}")
