@@ -414,7 +414,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -431,7 +430,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ env.SITE_DIR }}
+      - name: Check whether GitHub Pages is enabled
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Enable GitHub Pages in repository Settings → Pages → Build and deployment → GitHub Actions, then rerun this workflow."
+          fi
       - id: deployment
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/deploy-pages@v4
 """
         elif kind in {"android app", "android", "apk"}:
