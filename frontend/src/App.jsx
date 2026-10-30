@@ -105,7 +105,8 @@ export default function App(){
  function addFile(){const path=window.prompt('New file path (example: src/main.py)');if(!path?.trim())return;const clean=path.trim().replace(/^\/+/, '');if(clean.split('/').includes('..'))return flash('Invalid file path');setFiles(f=>({...f,[clean]:f[clean]||''}));setSelected(clean);setScreen('editor');setDrawer(false)}
  async function importFiles(list){
   const next={...files};let totalBytes=Object.values(next).reduce((n,v)=>n+(typeof v==='string'?new Blob([v]).size:0),0);let imported=0;
-  const safePath=value=>{const path=String(value||'').replace(/\\\\/g,'/').replace(/^\\.\\//,'');return !!path&&!path.startsWith('/')&&!/^[a-z]:/i.test(path)&&!path.split('/').some(part=>!part||part==='..'||part==='.')&&!path.split('/').some(part=>['.git','node_modules'].includes(part.toLowerCase()))};
+  const normalizePath=value=>String(value||'').replace(/\\/g,'/').replace(/^\.\/+/,'');
+  const safePath=value=>{const path=normalizePath(value);return !!path&&!path.startsWith('/')&&!/^[a-z]:/i.test(path)&&!path.split('/').some(part=>!part||part==='..'||part==='.')&&!path.split('/').some(part=>['.git','node_modules'].includes(part.toLowerCase()))};
   try{
    for(const file of Array.from(list||[])){
     if(file.name.toLowerCase().endsWith('.zip')){
@@ -113,14 +114,14 @@ export default function App(){
      const zip=await JSZip.loadAsync(file,{checkCRC32:true});const entries=Object.entries(zip.files).filter(([,item])=>!item.dir);
      if(entries.length>150)throw Error('ZIP archive contains more than 150 files');
      for(const [rawPath,item] of entries){
-      const path=rawPath.replace(/\\\\/g,'/');if(!safePath(path))continue;
+      const path=normalizePath(rawPath);if(!safePath(path))continue;
       const declaredSize=item._data?.uncompressedSize;if(typeof declaredSize==='number'&&(declaredSize>500000||totalBytes+declaredSize>8*1024*1024))throw Error('ZIP contents exceed the 8 MB uncompressed import limit');
       const value=await item.async('string');const bytes=new Blob([value]).size;
       if(bytes>500000||totalBytes+bytes>8*1024*1024)throw Error('Imported files exceed the 8 MB text limit');
       next[path]=value;totalBytes+=bytes;imported++;
      }
     }else{
-     const path=(file.webkitRelativePath||file.name).replace(/\\\\/g,'/');
+     const path=normalizePath(file.webkitRelativePath||file.name);
      if(!safePath(path))continue;
      if(file.size>500000||totalBytes+file.size>8*1024*1024)throw Error('Imported files exceed the 8 MB text limit');
      next[path]=await file.text();totalBytes+=file.size;imported++;
