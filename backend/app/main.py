@@ -17,6 +17,7 @@ class ProviderRequest(BaseModel):
 class ProjectPayload(BaseModel):
     name: str
     description: str = ""
+    kind: str = ""
     files: dict[str, str] = Field(default_factory=dict)
 
 class AgentRequest(BaseModel):
@@ -32,6 +33,7 @@ class ReviewRequest(BaseModel):
     api_key: str
     model: str
     project: ProjectPayload
+    skills: str = ""
 
 class PlanRequest(BaseModel):
     base_url: str
@@ -167,7 +169,7 @@ async def execute_agent(body: AgentRequest):
         raise HTTPException(400, "Task is required")
     file_context = "\n\n".join(f"--- FILE: {path} ---\n{content[:18000]}" for path, content in list(body.project.files.items())[:35])
     system = """You are OneByte Coder's implementation agent. First understand the user's request and the project architecture. Return ONLY valid JSON with this schema: {\"summary\":string,\"plan\":{\"title\":string,\"summary\":string,\"steps\":[string]},\"files\":{\"relative/path\":\"complete replacement file content\"}}. Only include files that must be created or fully replaced. Never use markdown fences. Do not claim tests, runtime previews, visual inspection, security scans, or deployments were performed unless actual tool results are supplied. Keep secrets out of source files. Prefer maintainable, production-minded code and explain important tradeoffs in summary. If the user asks for a large feature, implement a coherent vertical slice rather than stubs."""
-    selected_skills = select_relevant_skills(body.skills, body.project.description, body.task)
+    selected_skills = select_relevant_skills(body.skills, body.project.kind or body.project.description, body.task)
     if selected_skills:
         system += "\n\nRELEVANT USER SKILLS / PROJECT RULES:\n" + selected_skills
     user = f"Project: {body.project.name}\nBrief: {body.project.description}\nTask: {body.task}\n\nCurrent project files:\n{file_context or '(no files yet)'}"
@@ -189,8 +191,13 @@ async def execute_agent(body: AgentRequest):
 
 @app.post("/api/agent/review")
 async def review_project(body: ReviewRequest):
+    selected_skills = select_relevant_skills(body.skills, body.project.kind or body.project.description, "review security code quality")
+    if selected_skills:
+        system = "Apply these review-specific standards:\\n" + selected_skills
+    else:
+        system = ""
     file_context = "\n\n".join(f"--- FILE: {path} ---\n{content[:14000]}" for path, content in list(body.project.files.items())[:45])
-    system = "You are a rigorous senior software engineer and application security reviewer. Review only the supplied source; do not claim to run tests, scanners, or execute the app. Return ONLY JSON: {\"score\":number 0-10,\"summary\":string,\"findings\":[{\"severity\":\"high|medium|low|info\",\"title\":string,\"description\":string,\"file\":string|null,\"recommendation\":string}]}. Distinguish confirmed code issues from risks that need runtime validation. Never promise that a score means the project is vulnerability-free."
+    system += "\\nYou are a rigorous senior software engineer and application security reviewer. Review only the supplied source; do not claim to run tests, scanners, or execute the app. Return ONLY JSON: {\"score\":number 0-10,\"summary\":string,\"findings\":[{\"severity\":\"high|medium|low|info\",\"title\":string,\"description\":string,\"file\":string|null,\"recommendation\":string}]}. Distinguish confirmed code issues from risks that need runtime validation. Never promise that a score means the project is vulnerability-free."
     data = await provider_post(body.base_url, body.api_key, {"model": body.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": f"Project {body.project.name}\nBrief: {body.project.description}\nFiles:\n{file_context}"}], "temperature": 0.1, "response_format": {"type": "json_object"}})
     try:
         result = json.loads(data["choices"][0]["message"]["content"])
