@@ -51,6 +51,8 @@ def test_execute_rejects_path_traversal(monkeypatch):
             "plan": None,
             "files": {
                 "../outside.txt": "must not be returned",
+                ".env": "API_KEY=must-not-be-written",
+                "id_rsa": "private key",
                 "src/main.py": "print('ok')"
             }
         })}}]}
@@ -265,6 +267,7 @@ def test_publish_path_and_secret_guards():
     from app.main import is_sensitive_project_path, normalize_project_path, validate_publish_files
 
     assert normalize_project_path(r"src\main.py") == "src/main.py"
+    assert normalize_project_path(r"src\\main.py") == "src/main.py"
     assert normalize_project_path("../outside.txt") is None
     assert normalize_project_path(r"C:\private\secret.txt") is None
     assert is_sensitive_project_path(".env.production")
