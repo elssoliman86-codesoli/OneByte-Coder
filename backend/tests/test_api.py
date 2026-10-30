@@ -110,3 +110,22 @@ def test_stream_requires_non_empty_task():
         "project": {"name": "Sample", "description": "", "files": {}}
     })
     assert response.status_code == 400
+
+def test_skill_selector_filters_by_project_type():
+    from app.main import select_relevant_skills
+
+    skills = """# Skills
+## 1. Requirement analysis — always
+Always clarify requirements.
+## 2. Premium UI and visual design
+Use a design system.
+## 3. CLI and terminal engineering
+Use predictable CLI behavior.
+"""
+    web = select_relevant_skills(skills, "Website", "Build a responsive landing page")
+    cli = select_relevant_skills(skills, "CLI", "Build a command line utility")
+    assert "Requirement analysis" in web
+    assert "Premium UI" in web
+    assert "CLI and terminal" not in web
+    assert "CLI and terminal" in cli
+    assert "Premium UI" not in cli
