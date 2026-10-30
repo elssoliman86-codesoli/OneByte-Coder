@@ -264,9 +264,9 @@ def test_publish_path_and_secret_guards():
     from fastapi import HTTPException
     from app.main import is_sensitive_project_path, normalize_project_path, validate_publish_files
 
-    assert normalize_project_path(r"src\\main.py") == "src/main.py"
+    assert normalize_project_path(r"src\main.py") == "src/main.py"
     assert normalize_project_path("../outside.txt") is None
-    assert normalize_project_path(r"C:\\private\\secret.txt") is None
+    assert normalize_project_path(r"C:\private\secret.txt") is None
     assert is_sensitive_project_path(".env.production")
     assert not is_sensitive_project_path(".env.example")
     with pytest.raises(HTTPException) as error:
