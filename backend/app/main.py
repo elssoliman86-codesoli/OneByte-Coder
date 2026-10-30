@@ -193,11 +193,11 @@ async def execute_agent(body: AgentRequest):
 async def review_project(body: ReviewRequest):
     selected_skills = select_relevant_skills(body.skills, body.project.kind or body.project.description, "review security code quality")
     if selected_skills:
-        system = "Apply these review-specific standards:\\n" + selected_skills
+        system = "Apply these review-specific standards:\n" + selected_skills
     else:
         system = ""
     file_context = "\n\n".join(f"--- FILE: {path} ---\n{content[:14000]}" for path, content in list(body.project.files.items())[:45])
-    system += "\\nYou are a rigorous senior software engineer and application security reviewer. Review only the supplied source; do not claim to run tests, scanners, or execute the app. Return ONLY JSON: {\"score\":number 0-10,\"summary\":string,\"findings\":[{\"severity\":\"high|medium|low|info\",\"title\":string,\"description\":string,\"file\":string|null,\"recommendation\":string}]}. Distinguish confirmed code issues from risks that need runtime validation. Never promise that a score means the project is vulnerability-free."
+    system += "\nYou are a rigorous senior software engineer and application security reviewer. Review only the supplied source; do not claim to run tests, scanners, or execute the app. Return ONLY JSON: {\"score\":number 0-10,\"summary\":string,\"findings\":[{\"severity\":\"high|medium|low|info\",\"title\":string,\"description\":string,\"file\":string|null,\"recommendation\":string}]}. Distinguish confirmed code issues from risks that need runtime validation. Never promise that a score means the project is vulnerability-free."
     data = await provider_post(body.base_url, body.api_key, {"model": body.model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": f"Project {body.project.name}\nBrief: {body.project.description}\nFiles:\n{file_context}"}], "temperature": 0.1, "response_format": {"type": "json_object"}})
     try:
         result = json.loads(data["choices"][0]["message"]["content"])
