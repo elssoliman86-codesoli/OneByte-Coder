@@ -284,6 +284,7 @@ jobs:
           npm install
           npm run build
           npx cap sync android
+          sed -i 's/minSdkVersion = 22/minSdkVersion = 23/' android/variables.gradle
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
@@ -327,8 +328,7 @@ jobs:
         if: success()
         with:
           name: windows-exe-or-build-output
-          path: dist/
-          if-no-files-found: warn
+          path: |\n            dist/\n            publish/\n          if-no-files-found: warn
 """
         elif kind in {"cli", "terminal", "command line"}:
             build_workflow = """name: Package CLI project
