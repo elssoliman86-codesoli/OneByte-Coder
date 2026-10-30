@@ -7,7 +7,7 @@
 - Streaming coding endpoint at `/api/agent/execute/stream`, using OpenAI-compatible SSE upstream and newline-delimited JSON downstream.
 - Frontend consumes file-start/file-delta/file-end events and updates Monaco content as chunks arrive.
 - Sequential implementation queue is persisted locally and interrupted running jobs resume as queued after reload.
-- Native Android secure-storage plugin encrypts API credentials with AES-GCM and Android Keystore; browser mode uses memory-only storage.
+- Native Android secure-storage plugin encrypts API credentials with AES-GCM and Android Keystore (Android API 23+); browser mode uses memory-only storage.
 - Per-model HTTP status and latency test endpoint.
 - HTML preview inlines project CSS and classic JS assets when present; sandboxed DOM audit reports touch target size, overlapping controls, missing labels and horizontal overflow.
 - GitHub repository import (bounded text-file import), source publishing and updating existing repositories, generated README and per-target build/deploy workflows.
