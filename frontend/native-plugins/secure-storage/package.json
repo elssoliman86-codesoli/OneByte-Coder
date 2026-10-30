@@ -1,0 +1,12 @@
+{
+  "name": "@onebyte/secure-storage",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  }
+}
