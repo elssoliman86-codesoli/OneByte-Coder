@@ -65,7 +65,7 @@ Open Actions → Build Android APK and download the `onebyte-coder-debug-apk` ar
 
 ## Deploying the backend
 
-The default API URL is `http://localhost:8000`. On a physical Android phone, localhost refers to the phone, not your computer. Deploy the FastAPI backend over HTTPS and set the API server URL in Settings.
+The default API URL is `http://localhost:8000`. On a physical Android phone, localhost refers to the phone, not your computer. Deploy the FastAPI backend over HTTPS and set the API server URL in Settings. Configure `ONEBYTE_ALLOWED_ORIGINS` on the backend with a comma-separated list of trusted frontend origins (for example, `https://elssoliman86-codesoli.github.io,https://localhost`). CORS is not authentication; do not expose an unauthenticated backend to untrusted networks.
 
 ## Important limitations
 
@@ -74,8 +74,9 @@ The default API URL is `http://localhost:8000`. On a physical Android phone, loc
 - The preview audit uses DOM geometry/accessibility heuristics. It does not capture screenshots, evaluate visual aesthetics or replace real device testing.
 - Python, CLI, Android and desktop execution still require isolated runtime workers. The generated GitHub workflows build selected project types after publishing.
 - Website publishing requires enabling repository Settings → Pages → Build and deployment → GitHub Actions. GitHub settings cannot be enabled by the source-upload endpoint.
-- Android debug APK workflow requires a Capacitor Android project at the project root. Windows EXE workflow supports Python entry points and .NET projects; other stacks need a dedicated packager.
+- Android debug APK workflow builds an existing Gradle project or bootstraps a Capacitor wrapper for a Node project. Windows EXE workflow supports Python entry points and .NET projects; other stacks need a dedicated packager.
 - Static model review is not SAST/DAST, penetration testing or a security certification. A 10/10 model score is not proof that software is vulnerability-free.
 - Android Keystore storage is native-only. Browser preview keeps secrets in memory and does not persist them.
+- Browser-based project persistence currently uses local storage; very large workspaces may reach browser quota limits.
 - Queue state is stored in local storage, not a server-side durable job database.
 - Physical-device installation and end-to-end testing have not been performed by CI.
