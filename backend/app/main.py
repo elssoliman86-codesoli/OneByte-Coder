@@ -235,7 +235,7 @@ async def import_github_repository(body: GitHubImportRequest):
         ignored = (".git/", "node_modules/", "dist/", "build/", ".next/", "vendor/")
         for item in tree:
             path = item.get("path", "")
-            if item.get("type") != "blob" or not path or path.startswith(ignored) or item.get("size", 0) > 500_000:
+            if item.get("type") != "blob" or not path or path.startswith(ignored) or ".." in path.split("/") or path.startswith("/") or item.get("size", 0) > 500_000:
                 continue
             if len(files) >= 150 or total_bytes >= 5_000_000:
                 break
