@@ -317,7 +317,8 @@ def test_stream_rejects_truncated_file_instead_of_marking_it_complete(monkeypatc
         "task": "Create a Python file",
         "project": {"name": "Sample", "description": "CLI", "kind": "CLI", "files": {}}
     })
+    assert response.status_code == 200, response.text
     events = [json.loads(line) for line in response.text.splitlines() if line.strip()]
-    assert any(event.get("type") == "error" and "file-end marker" in event.get("message", "") for event in events)
+    assert any(event.get("type") == "error" and "file-end marker" in event.get("message", "") for event in events), response.text
     assert not any(event.get("type") == "done" for event in events)
     assert not any(event.get("type") == "file_end" for event in events)
