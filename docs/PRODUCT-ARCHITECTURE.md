@@ -2,49 +2,55 @@
 
 ## Product direction
 
-OneByte Coder is an Android-first mobile code editor with an AI coding assistant. The phone experience is the primary product; desktop browser support is secondary and responsive.
+Android-first AI coding workspace with distinct planning, implementation and review roles.
 
-## Mobile information architecture
+## User-facing areas
 
-- **Projects:** current project, quick-start project types and import entry points.
-- **Editor:** Monaco editor, file switching, file creation, GitHub publishing and preview access.
-- **AI Assistant:** chat, implementation plan and independent static review.
-- **Preview:** runtime status and project preview surface.
-- **Navigation drawer:** file tree, import file/folder/ZIP, settings and provider connections.
-- **Settings sheet:** AI provider URL/key/model, backend URL and GitHub token.
+- Projects: project list, project type, description and import.
+- Editor: Monaco, file tree, live streamed file updates, queue status and preview entry.
+- Assistant: chat, architecture plan, independent static review.
+- Preview: sandboxed HTML, linked asset inlining and DOM layout audit.
+- Settings: provider URL/key, model discovery, per-model HTTP tests, planner/coder/reviewer roles, Skills.md, backend URL and GitHub token.
+- Publish details: repository link, generated workflow link and deployment prerequisites.
 
-## Core services
+## Services
 
-- **Workspace UI:** mobile-first React application packaged for Android by Capacitor.
-- **Editor:** Monaco with language inference from file extensions.
-- **Orchestrator:** FastAPI endpoints for provider discovery, AI implementation and source review.
-- **Provider registry:** OpenAI-compatible provider URL, API key and model selection.
-- **Project storage:** local browser storage for the current project's files and metadata.
-- **Release manager:** GitHub publishing endpoint and GitHub Actions Android debug APK workflow.
+- React/Capacitor frontend.
+- FastAPI orchestration API.
+- OpenAI-compatible provider discovery and streaming completion.
+- Android native secure storage backed by AES-GCM and Android Keystore.
+- Local project and queue persistence.
+- GitHub source publisher and generated per-project Actions workflow.
 
-## Mobile interaction requirements
+## Streaming protocol
 
-- Use dynamic viewport sizing and safe-area insets.
-- Keep primary navigation reachable at the bottom.
-- Keep files and settings in a slide-out drawer / bottom sheet rather than desktop sidebars.
-- Avoid hiding the assistant or file explorer on narrow screens.
-- Make editor and chat composer flex within the available viewport when the soft keyboard opens.
-- Touch targets should be comfortable and controls should not rely on hover.
+The backend consumes upstream SSE deltas and emits newline-delimited JSON events:
+- summary_delta
+- file_start
+- file_delta
+- file_end
+- done / error
 
-## Agent state and evidence
+The Coder model is instructed to emit complete file blocks. Monaco updates each file as its deltas arrive. This is a constrained text protocol, not a general agent tool loop.
 
-`draft → analyzed → planned → implementing → changes_returned → review → publish_ready → published`
+## Preview and QA boundary
 
-Do not claim runtime preview, visual QA, tests, security scans or deployment unless evidence from the corresponding tool exists.
+HTML preview is sandboxed. Project CSS and classic JS assets can be inlined when their paths exist in the project file map. The injected audit checks DOM geometry and accessibility heuristics; it does not capture screenshots or judge subjective visual quality. Never claim screenshot-based visual QA without an actual screenshot and visual inspection.
 
-## Trust and safety boundaries
+## Release workflows
+
+Publishing creates source files and a target-specific Actions workflow:
+- Website: Pages artifact and deployment (repository Pages setting must be enabled).
+- Android: Capacitor debug APK artifact.
+- Windows desktop: Python PyInstaller or .NET single-file publish.
+- CLI: source ZIP artifact.
+
+A generated workflow is a build attempt; only its completed Actions run and artifacts prove success.
+
+## Trust boundaries
 
 - Never execute untrusted project code on the API host.
-- Use isolated per-project runtimes with resource and network limits before enabling previews or terminal execution.
-- Reject archive path traversal and oversized files.
-- Keep credentials out of source files and model context unless explicitly required; redact logs.
-- Require explicit user approval for publishing and destructive file operations.
-
-## Current limitations
-
-The current Preview surface is a placeholder. The app does not yet have a sandboxed runtime, on-device terminal, durable multi-project database, streaming code diffs or signed release pipeline. The backend must be deployed over HTTPS for physical-device use.
+- Runtime execution requires isolated containers/workers with resource and network restrictions.
+- Reject archive traversal and generated path traversal.
+- Keep credentials out of project source and model context.
+- Model review is not a substitute for scanners or penetration testing.
