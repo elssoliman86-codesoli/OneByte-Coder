@@ -136,3 +136,97 @@ def test_github_import_requires_owner_repo_format():
         "repository": "not-a-repository-path"
     })
     assert response.status_code == 400
+
+
+def test_publish_to_existing_repository_uses_owner_and_default_branch(monkeypatch):
+    uploaded = {}
+
+    class FakeResponse:
+        def __init__(self, status_code, payload=None):
+            self.status_code = status_code
+            self._payload = payload or {}
+            self.text = json.dumps(self._payload)
+
+        def json(self):
+            return self._payload
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def get(self, url, **kwargs):
+            if url.endswith("/repos/acme/sample"):
+                return FakeResponse(200, {
+                    "name": "sample",
+                    "full_name": "acme/sample",
+                    "html_url": "https://github.com/acme/sample",
+                    "default_branch": "trunk",
+                    "owner": {"login": "acme"}
+                })
+            if "/contents/" in url:
+                return FakeResponse(404, {"message": "Not Found"})
+            raise AssertionError(f"Unexpected GET: {url}")
+
+        async def put(self, url, **kwargs):
+            uploaded[url] = kwargs["json"]
+            return FakeResponse(201, {"content": {"path": url.rsplit("/", 1)[-1]}})
+
+    monkeypatch.setattr("app.main.httpx.AsyncClient", FakeAsyncClient)
+    response = client.post("/api/github/publish", json={
+        "token": "test-token",
+        "repo_name": "sample",
+        "existing_repo": "acme/sample",
+        "description": "A sample website",
+        "kind": "Website",
+        "files": {"index.html": "<h1>Hello</h1>"}
+    })
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["repository"] == "https://github.com/acme/sample"
+    assert payload["branch"] == "trunk"
+    assert payload["files_uploaded"] == 3
+    readme = next(v for k, v in uploaded.items() if k.endswith("/README.md"))["content"]
+    import base64
+    readme_text = base64.b64decode(readme).decode()
+    assert readme_text.startswith("# sample")
+    assert "https://github.com/acme/OneByte-Coder" in readme_text
+    workflow = next(v for k, v in uploaded.items() if k.endswith("/onebyte-build.yml"))["content"]
+    workflow_text = base64.b64decode(workflow).decode()
+    assert 'branches: ["trunk"]' in workflow_text
+
+
+def test_model_test_reports_provider_http_status(monkeypatch):
+    class FakeResponse:
+        status_code = 401
+        text = "Invalid API key"
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr("app.main.httpx.AsyncClient", FakeAsyncClient)
+    response = client.post("/api/providers/test-model", json={
+        "base_url": "https://provider.example/v1",
+        "api_key": "bad-key",
+        "model": "sample-model"
+    })
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+    assert response.json()["http_status"] == 401
+    assert response.json()["detail"] == "Invalid API key"
