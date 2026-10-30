@@ -16,7 +16,7 @@ OneByte Coder is an Android-first AI coding workspace. It separates project plan
 
 - Mobile-first React/Capacitor workspace and Monaco editor.
 - Multi-project local persistence, file tree, file creation, ZIP/file/folder imports for supported text/source formats (binary assets are skipped).
-- OpenAI-compatible provider settings, model discovery, metadata passthrough and per-model HTTP status/latency test.
+- OpenAI-compatible provider settings, model discovery, metadata passthrough and per-model HTTP status/latency test; non-secret provider/model settings persist locally.
 - Independent Planner, Coder and Reviewer model roles.
 - Structured project planning and persistent Skills.md instructions.
 - Streaming file generation into Monaco using newline-delimited JSON events.
@@ -27,6 +27,8 @@ OneByte Coder is an Android-first AI coding workspace. It separates project plan
 - In-frame DOM layout heuristics for small touch targets, control overlap, missing accessible labels and horizontal overflow.
 - Static model-assisted code review and a 10/10 publish gate.
 - GitHub source publishing, generated README and per-target build/deploy workflows for websites, Android, Windows Python/.NET and CLI source archives.
+- Import/publish path validation, secret-file blocking, bounded text-file sizes and rejection of incomplete streamed file blocks.
+- Dependency security gate in CI: npm audit must pass without high/critical vulnerabilities.
 
 - Backend regression tests and GitHub Actions CI.
 
