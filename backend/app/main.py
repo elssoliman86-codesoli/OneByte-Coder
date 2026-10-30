@@ -68,13 +68,14 @@ def select_relevant_skills(raw: str, project_kind: str, task: str) -> str:
     sections = re.split(r"(?=^##\s+)", raw, flags=re.MULTILINE)
     always_terms = ("requirement analysis", "architecture and stack", "code quality", "application security", "git and release", "model metadata integrity")
     context = (project_kind + " " + task).lower()
+    tokens = set(re.findall(r"[a-z0-9+#.]+", context))
     selected = []
     for section in sections:
         heading = section.splitlines()[0].lower() if section.strip() else ""
         if not heading.startswith("## "):
             continue
         include = any(term in heading for term in always_terms)
-        if any(term in context for term in ("website", "web app", "frontend", "html", "css", "react", "ui", "design")):
+        if any(term in context for term in ("website", "web app", "frontend", "html", "css", "react", "design")) or "ui" in tokens:
             include = include or any(term in heading for term in ("premium ui", "web application engineering", "visual qa"))
         if any(term in context for term in ("android", "mobile", "apk", "capacitor", "ios")):
             include = include or any(term in heading for term in ("premium ui", "android engineering", "visual qa"))
